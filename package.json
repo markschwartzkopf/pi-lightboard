@@ -1,0 +1,19 @@
+{
+  "name": "pi-lightboard",
+  "version": "1.0.0",
+  "description": "DMX controller for Raspberry Pi",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/markschwartzkopf/pi-lightboard.git"
+  },
+  "author": "Mark Schwartzkopf",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/markschwartzkopf/pi-lightboard/issues"
+  },
+  "homepage": "https://github.com/markschwartzkopf/pi-lightboard#readme"
+}
