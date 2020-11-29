@@ -12,7 +12,7 @@
 	- ssh in with the development PC
 	- `nano .ssh/authorized_keys`, paste public key from development account's ~/.ssh/id_rsa.pub, save
 	- on development PC, add entry to ~/.ssh/config with correct Host (name for development ssh) and HostName (ip) and User (username on pi)
-- Add Node repo, using "curl" command from Ubuntu instructions on [node.dev/node-binary](node.dev/node-binary)
+- Add Node repo, using "curl" command from Ubuntu instructions on [node.dev/node-binary](https://node.dev/node-binary)
 - Update pi software: `sudo apt full-upgrade -y`
 - Install Node on pi: `sudo apt install -y nodejs`
 - Allow node to access port 80: `sudo setcap cap_net_bind_service=+ep /usr/bin/node`
