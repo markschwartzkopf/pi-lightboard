@@ -15,5 +15,14 @@
   "bugs": {
     "url": "https://github.com/markschwartzkopf/pi-lightboard/issues"
   },
-  "homepage": "https://github.com/markschwartzkopf/pi-lightboard#readme"
+  "homepage": "https://github.com/markschwartzkopf/pi-lightboard#readme",
+  "devDependencies": {
+    "prettier": "^2.2.1"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "rpi-gpio": "^2.1.7",
+    "serialport": "^9.0.2",
+    "ws": "^7.4.0"
+  }
 }
