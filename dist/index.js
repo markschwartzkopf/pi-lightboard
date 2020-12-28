@@ -1,23 +1,29 @@
 'use strict';
-
-
-// move this to server module once it works
-const express = require('express');
-const app = express();
-const WebSocket = require("ws");
-
-app.use(express.static(__dirname + '/../public'));
-
-app.get('/', (req, res) => {
-  res.send('this shouldn\'t ever be sent');
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
 });
-
-const server = app.listen(80, () => console.log('Listening on port 80.'));
-
-const wss = new WebSocket.Server({server});
-
-wss.on('connection', (ws, req) => {
-  console.log(
-    "Client connected: " + JSON.stringify(req.connection.remoteAddress)
-  );
-})
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+Promise.resolve().then(() => __importStar(require('./server')));
+//import('./api');
+const global_1 = __importDefault(require("./global"));
+const dmx_1 = __importDefault(require("./dmx"));
+global_1.default.dmx = new dmx_1.default;

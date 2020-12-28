@@ -1,9 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <style></style>
+    <link rel="stylesheet" type="text/css" href="faders.css" />
+    <style>
+      :root {
+        --fader-width: 4rem;
+        --val-height: 2rem;
+        --name-height: 4rem;
+        --fader-height: 15rem;
+      }
+      body {
+        background-color: #272727;
+        font-family: Arial, Helvetica, sans-serif;
+        margin: 5px;
+        overflow: hidden;
+      }
+      .val {
+        width: 80%;
+        height: 1rem;
+        padding-top: 0.1rem;
+        text-align: center;
+        font-size: 70%;
+        background-color: black;
+        color: lightgray;
+        border: 1px solid #202020;
+      }
+      .fader-name {
+        width: calc(100% - 6px);
+        height: calc(100% - 6px - 0.5rem);
+        margin-top: 0.5rem;
+        text-align: center;
+        background-color: lightgray;
+        color: black;
+        border: 1px solid #888888;
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      #grd {
+        place-items: center center;
+        width: calc(100vw - 10px); /* body margin * 2 */
+        overflow-x: auto;
+      }
+      input[type='text'] {
+        -moz-appearance: none; /* older firefox */
+        -webkit-appearance: none; /* safari, chrome, edge and ie mobile */
+        appearance: none; /* rest */
+      }
+      /* body * {
+        background-color: white;
+      } */
+    </style>
   </head>
   <body>
-    Test
+    <div id="grd" style="display: grid;"></div>
+    <input id="msg" />
+    <!-- <div id="rtrn" style="position: absolute; color: white; top:0"></div> -->
+    <script src="index.js"></script>
   </body>
 </html>
