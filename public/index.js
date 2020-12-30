@@ -1,10 +1,22 @@
 "use strict";
 let format = 'fixtures';
-if (new Array(10).length == 10)
-    format = 'dmx';
-let dmxValues = new Array(513).fill(0);
+//let dmxValues: number[] = new Array(513).fill(0);
 let dmxLabels = [...Array(513).keys()].map(String);
+//let fixtureValues: number[] = new Array(1).fill(0);
+let fixtureLabels = [...Array(1).keys()].map(String);
+let values = { dmx: new Array(513).fill(0), fixture: new Array(1).fill(0) };
 let onScreenFaders = [];
+let initialized = {
+    dmxValues: false,
+    dmxLabels: false,
+    fixtureValues: false,
+    fixtureLabels: false,
+    all: false,
+    retries: 0,
+};
+let initTimeout;
+let dmxButton = document.getElementById('dmx-format');
+let fixturesButton = document.getElementById('fixtures-format');
 function setFaderHeight() {
     const root = document.documentElement;
     root.style.fontSize = window.devicePixelRatio * 20 + 'px';
@@ -38,63 +50,46 @@ socket.onopen = () => {
         }
         processDataFromServer(msg);
     };
-    sendToSocket({ command: 'dmx' });
+    init();
 };
 function sendToSocket(msg) {
     socket.send(JSON.stringify(msg));
 }
-let mesg = document.getElementById('msg');
-mesg.onkeydown = (e) => {
-    if (e.keyCode == 13) {
-        socket.send(mesg.value);
-    }
-    if (e.keyCode == 27) {
-        socket.close();
-    }
+dmxButton.onclick = () => {
+    format = 'dmx';
+    reDrawFaders();
+};
+fixturesButton.onclick = () => {
+    format = 'fixtures';
+    reDrawFaders();
 };
 reDrawFaders();
 function reDrawFaders() {
     switch (format) {
         case 'dmx':
-            drawFaders(dmxValues, dmxLabels, 'dmx');
+            drawFaders(values.dmx, dmxLabels, 'dmx');
+            dmxButton.style.backgroundColor = 'yellow';
+            fixturesButton.style.backgroundColor = '';
+            dmxButton.blur();
             break;
         case 'fixtures':
+            drawFaders(values.fixture, fixtureLabels, 'fixture');
+            dmxButton.style.backgroundColor = '';
+            fixturesButton.style.backgroundColor = 'yellow';
+            fixturesButton.blur();
             break;
         default:
     }
 }
-function onDmxValues(newValues) {
-    for (let x = 0; x < onScreenFaders.length; x++) {
-        let fader = onScreenFaders[x];
-        if (fader.type == 'dmx' &&
-            newValues[fader.number] != dmxValues[fader.number]) {
-            let faderElement = document.getElementById('fader-dmx-' + fader.number);
-            let valElement = document.getElementById('val-dmx-' + fader.number);
-            if (document.activeElement != faderElement) {
-                faderElement.value = newValues[fader.number].toString();
-            }
-            if (document.activeElement != valElement)
-                valElement.value = Math.round(newValues[fader.number] * 255).toString();
-        }
-    }
-    dmxValues = newValues;
-}
-function onDmxLabels(dmxLabels) {
-    //populate DMX labels
-    console.log('code populate DMX labels');
-}
-//code for control type: dmx, fixtures, groups, user
-/* let tstArray1 = [0.5, 0.1, 0.5, 0.1, 0.5, 0.1];
-let tstArray2 = ['dsgf cans longname', 'fdsg', '3', '4', '5', '6'];
-//tstArray1 = [...tstArray1, ...new Array(500).fill(0.4)];
-//tstArray2 = [...tstArray2, ...new Array(500).fill('hey')];
-drawFaders(tstArray1, tstArray2, 'dmx'); */
 function drawFaders(faderArray, nameArray, faderTyp, faderNumber) {
     if (faderArray.length != nameArray.length ||
         (Array.isArray(faderTyp) && faderArray.length != faderTyp.length)) {
         console.error("'drawFaders' needs arrays to be the same size");
         return;
     }
+    let startloop = 0;
+    if (faderTyp == 'dmx')
+        startloop = 1;
     if (!Array.isArray(faderTyp)) {
         faderTyp = new Array(faderArray.length).fill(String(faderTyp));
     }
@@ -107,7 +102,6 @@ function drawFaders(faderArray, nameArray, faderTyp, faderNumber) {
     grd.style.gridAutoColumns = 'var(--fader-width)';
     grd.style.gridTemplateRows =
         'var(--val-height) var(--fader-height) var(--name-height)';
-    let startloop = 1;
     for (let x = startloop; x < faderArray.length; x++) {
         onScreenFaders.push({ type: faderTyp[x], number: faderNumber[x] });
         let column = x + 1 - startloop + '/' + (x + 2 - startloop);
@@ -140,12 +134,15 @@ function drawFaders(faderArray, nameArray, faderTyp, faderNumber) {
         fader.value = String(faderArray[x]);
         fader.style.width = 'var(--fader-height)'; //swapped because of 270deg rotation
         fader.style.height = 'var(--fader-width)'; //swapped because of 270deg rotation
-        fader.oninput = function (ev) {
+        fader.oninput = (ev) => {
             let [element, type, numString] = fader.id.split('-');
             let number = parseInt(numString);
             processInput(element, type, number, parseFloat(fader.value));
         };
         fader.onchange = () => {
+            fader.blur();
+        };
+        fader.onmouseup = () => {
             fader.blur();
         };
         let div = document.createElement('div');
@@ -161,14 +158,120 @@ function drawFaders(faderArray, nameArray, faderTyp, faderNumber) {
         div.className = 'fader-name';
         div.style.gridColumn = column;
         div.style.gridRow = '3/4';
+        div.oncontextmenu = (e) => {
+            e.preventDefault();
+            console.log('rightclick ' + div.id);
+        };
+        div.onmousedown = () => {
+            flash(div);
+        };
+        div.onmouseup = () => {
+            flash(div, 'off');
+        };
+        div.onmouseleave = () => {
+            flash(div, 'off');
+        };
         grd.appendChild(div);
     }
     //
 }
+function flash(div, off) {
+    let bgcolor = 'yellow';
+    if (off) {
+        bgcolor = '';
+    }
+    div.style.backgroundColor = bgcolor;
+}
 function processDataFromServer(msg) {
     switch (msg.type) {
         case 'dmxValues':
-            onDmxValues(msg.data);
+            init('dmxValues');
+            onValues(msg.data, 'dmx');
+            values.dmx = msg.data;
+            break;
+        case 'dmxClaims':
+            init('dmxLabels');
+            let newLabels = [];
+            for (let x = 0; x < msg.data.length; x++) {
+                if (msg.data[x]) {
+                    let div = document.createElement('div');
+                    let p = document.createElement('p');
+                    p.style.margin = '0em';
+                    p.style.color = 'green';
+                    p.innerHTML = msg.data[x].type;
+                    div.appendChild(p);
+                    p = document.createElement('p');
+                    p.style.margin = '0em';
+                    p.innerHTML = msg.data[x].fixtureLabel;
+                    div.appendChild(p);
+                    //newLabels[x] = msg.data[x]!.type + '\n' + msg.data[x]!.fixtureLabel;
+                    newLabels[x] = div.innerHTML;
+                }
+                else
+                    newLabels[x] = x.toString();
+            }
+            for (let x = 0; x < onScreenFaders.length; x++) {
+                let fader = onScreenFaders[x];
+                if (fader.type == 'dmx' &&
+                    newLabels[fader.number] != dmxLabels[fader.number]) {
+                    let labelElement = document.getElementById('label-dmx-' + fader.number);
+                    labelElement.innerHTML = newLabels[fader.number];
+                }
+            }
+            dmxLabels = newLabels;
+            break;
+        case 'fixtureValues':
+            init('fixtureValues');
+            // pad out or attenuate fixtureLabels if this changes fixture number
+            if (msg.data.length != fixtureLabels.length) {
+                let difference = msg.data.length - fixtureLabels.length;
+                if (difference > 0) {
+                    fixtureLabels.push(...new Array(difference).fill(''));
+                }
+                else {
+                    fixtureLabels.splice(difference);
+                }
+            }
+            //redraw if new number of fixtures, update otherwise
+            if (msg.data.length != values.fixture.length) {
+                values.fixture = msg.data;
+                reDrawFaders();
+            }
+            else {
+                onValues(msg.data, 'fixture');
+                values.fixture = msg.data;
+            }
+            break;
+        case 'fixtureLabels':
+            init('fixtureLabels');
+            // pad out or attenuate values.fixture if this changes fixture number
+            if (msg.data.length != values.fixture.length) {
+                let difference = msg.data.length - values.fixture.length;
+                if (difference > 0) {
+                    values.fixture.push(...new Array(difference).fill(0));
+                }
+                else {
+                    values.fixture.splice(difference);
+                }
+            }
+            //redraw if new number of fixtures, update otherwise
+            if (msg.data.length != fixtureLabels.length) {
+                fixtureLabels = msg.data;
+                reDrawFaders();
+            }
+            else {
+                for (let x = 0; x < onScreenFaders.length; x++) {
+                    let fader = onScreenFaders[x];
+                    if (fader.type == 'fixture' &&
+                        msg.data[fader.number] != fixtureLabels[fader.number]) {
+                        let labelElement = document.getElementById('label-fixture-' + fader.number);
+                        labelElement.innerHTML = msg.data[fader.number];
+                    }
+                    else
+                        console.log(msg.data);
+                }
+                fixtureLabels = msg.data;
+            }
             break;
         case 'info':
             break;
@@ -179,7 +282,22 @@ function processDataFromServer(msg) {
             console.log(msg);
     }
 }
+function onValues(newValues, type) {
+    for (let x = 0; x < onScreenFaders.length; x++) {
+        let fader = onScreenFaders[x];
+        if (fader.type == type && newValues[fader.number] != values[type][fader.number]) {
+            let faderElement = document.getElementById('fader-' + type + '-' + fader.number);
+            let valElement = document.getElementById('val-' + type + '-' + fader.number);
+            if (document.activeElement != faderElement) {
+                faderElement.value = newValues[fader.number].toString();
+            }
+            if (document.activeElement != valElement)
+                valElement.value = Math.round(newValues[fader.number] * 255).toString();
+        }
+    }
+}
 function processInput(element, type, number, value) {
+    let valueName = 'value';
     let faderId = 'fader-' + type + '-' + number.toString();
     let fader = document.getElementById(faderId);
     let valId = 'val-' + type + '-' + number.toString();
@@ -195,10 +313,11 @@ function processInput(element, type, number, value) {
                     type: type,
                     number: number,
                     value: value / 255,
+                    valueName: valueName
                 });
                 switch (type) {
                     case 'dmx':
-                        dmxValues[number] = value / 255;
+                        values.dmx[number] = value / 255;
                         fader.value = (value / 255).toString();
                         break;
                     case 'fixture':
@@ -214,6 +333,7 @@ function processInput(element, type, number, value) {
                 type: type,
                 number: number,
                 value: value,
+                valueName: valueName
             });
             break;
         default:
@@ -229,7 +349,7 @@ function resetElement(id) {
             switch (type) {
                 case 'dmx':
                     let val = document.getElementById(id);
-                    val.value = Math.round(dmxValues[number] * 255).toString();
+                    val.value = Math.round(values.dmx[number] * 255).toString();
                     break;
                 case 'fixture':
                     console.error('code me');
@@ -243,4 +363,91 @@ function resetElement(id) {
             console.error('code me');
             break;
     }
+}
+function init(completed) {
+    clearTimeout(initTimeout);
+    if (completed)
+        initialized[completed] = true;
+    if (!initialized.dmxValues) {
+        sendToSocket({ command: 'dmx' });
+    }
+    else if (!initialized.dmxLabels) {
+        sendToSocket({ command: 'dmxClaims' });
+    }
+    else if (!initialized.fixtureValues) {
+        sendToSocket({ command: 'fixtures' });
+    }
+    else if (!initialized.fixtureLabels) {
+        sendToSocket({ command: 'fixtureLabels' });
+    }
+    else
+        initialized.all = true;
+    if (!initialized.all)
+        initTimeout = setTimeout(() => {
+            initialized.retries++;
+            if (initialized.retries < 5) {
+                init();
+            }
+            else
+                console.error('Server poll timed out');
+        }, 100);
+}
+//testing code
+let test = document.getElementById('test');
+drawDmxGrid(test, 4, 40, (num) => {
+    console.log(num);
+});
+function drawDmxGrid(el, num, current, callback) {
+    let tbl = document.createElement('table');
+    tbl.style.height = '100%';
+    tbl.style.width = '100%';
+    tbl.style.tableLayout = 'fixed';
+    tbl.style.borderCollapse = 'collapse';
+    let i = 0;
+    for (let y = 0; y < 16; y++) {
+        let row = document.createElement('tr');
+        for (let x = 0; x < 32; x++) {
+            let cell = document.createElement('td');
+            cell.style.fontSize = el.clientWidth / 60 + 'px';
+            cell.style.fontWeight = '700';
+            cell.style.overflow = 'hidden';
+            cell.style.border = '1px solid black';
+            cell.style.padding = '0';
+            cell.style.textAlign = 'center';
+            let index = 1 + x + y * 32;
+            cell.innerHTML = index.toString();
+            cell.style.cursor = 'default';
+            if (i > 0)
+                i++;
+            if (index == current)
+                i = 1;
+            if (i > 0 && i <= num) {
+                cell.style.backgroundColor = 'yellow';
+            }
+            cell.onclick = () => {
+                if (index + num <= 513) {
+                    callback(index);
+                    let i = 0;
+                    for (let y = 0; y < tbl.children.length; y++) {
+                        for (let x = 0; x < tbl.children[y].children.length; x++) {
+                            let elem = tbl.children[y].children[x];
+                            if (i > 0)
+                                i++;
+                            if (parseInt(elem.innerHTML) == index)
+                                i = 1;
+                            if (i > 0 && i <= num) {
+                                elem.style.backgroundColor = 'yellow';
+                            }
+                            else
+                                elem.style.backgroundColor = '';
+                        }
+                    }
+                }
+            };
+            row.appendChild(cell);
+        }
+        tbl.appendChild(row);
+    }
+    el.innerHTML = '';
+    el.appendChild(tbl);
 }

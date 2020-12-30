@@ -1,10 +1,8 @@
 'use strict';
 import('./server');
-//import('./api');
-
 import globalObj from './global'
-import Dmx from './dmx';
-globalObj.dmx = new Dmx;
+import('./lightboard');
+
 //testing code:
 
 //console.log(globalObj.dmx.dmxArray)

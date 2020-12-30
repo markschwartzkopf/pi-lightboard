@@ -18,12 +18,6 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 Promise.resolve().then(() => __importStar(require('./server')));
-//import('./api');
-const global_1 = __importDefault(require("./global"));
-const dmx_1 = __importDefault(require("./dmx"));
-global_1.default.dmx = new dmx_1.default;
+Promise.resolve().then(() => __importStar(require('./lightboard')));

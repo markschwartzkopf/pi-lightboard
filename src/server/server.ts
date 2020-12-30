@@ -12,7 +12,7 @@ class myWebSocket extends WebSocket {
   isAlive: boolean = true;
   ip: string = 'no ip given';
   dmxValuesUpdate?: (dmxValues: number[]) => void;
-  lightboardUpdate?: (update: lightboardUpdate) => void;
+  broadcast?: (msg: serverMsg) => void;
 }
 
 app.use(express.static(__dirname + '/../public', { index: 'index.html' }));
@@ -34,7 +34,6 @@ wss.on('connection', (ws: myWebSocket, req) => {
     let clientMsg: clientMsg
     try {
       clientMsg = JSON.parse(msg)
-      
     } catch (e) { 
       console.error('Bad JSON from ' + ws.ip);
       console.log(msg)
@@ -44,16 +43,17 @@ wss.on('connection', (ws: myWebSocket, req) => {
   });
   ws.dmxValuesUpdate = (dmxValues) => {
     ws.send(JSON.stringify(api.processDmxValuesUpdate(dmxValues)));
+    ws.send(JSON.stringify(api.processApiCmd({command: 'fixtures'})));
   };
-  ws.lightboardUpdate = (update) => {
-    //code me
+  ws.broadcast = (msg) => {
+    ws.send(JSON.stringify(msg))
   }
   globalObj.dmx!.on('change', ws.dmxValuesUpdate);
-  globalObj.event.on('lightboardChange', ws.lightboardUpdate);
+  globalObj.event.on('broadcast', ws.broadcast);
   //console.log(globalObj.dmx)
   ws.on('close', () => {
     globalObj.dmx!.removeListener('change', ws.dmxValuesUpdate!);
-    globalObj.event.removeListener('lightboardChange', ws.lightboardUpdate!);
+    globalObj.event.removeListener('broadcast', ws.broadcast!);
     console.log('Connection properly closed for: ' + ws.ip);
   });
 });

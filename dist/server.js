@@ -62,16 +62,17 @@ wss.on('connection', (ws, req) => {
     });
     ws.dmxValuesUpdate = (dmxValues) => {
         ws.send(JSON.stringify(api.processDmxValuesUpdate(dmxValues)));
+        ws.send(JSON.stringify(api.processApiCmd({ command: 'fixtures' })));
     };
-    ws.lightboardUpdate = (update) => {
-        //code me
+    ws.broadcast = (msg) => {
+        ws.send(JSON.stringify(msg));
     };
     global_1.default.dmx.on('change', ws.dmxValuesUpdate);
-    global_1.default.event.on('lightboardChange', ws.lightboardUpdate);
+    global_1.default.event.on('broadcast', ws.broadcast);
     //console.log(globalObj.dmx)
     ws.on('close', () => {
         global_1.default.dmx.removeListener('change', ws.dmxValuesUpdate);
-        global_1.default.event.removeListener('lightboardChange', ws.lightboardUpdate);
+        global_1.default.event.removeListener('broadcast', ws.broadcast);
         console.log('Connection properly closed for: ' + ws.ip);
     });
 });

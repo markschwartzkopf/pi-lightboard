@@ -59,6 +59,7 @@ class Dmx extends events_1.EventEmitter {
                 });
             }
         };
+        this.claimed = new Array(513).fill({ fixture: -1, type: 'value' });
     }
     setValue(channel, value, duration) {
         if (!Number.isInteger(channel) || channel <= 0 || channel > 512) {
@@ -69,8 +70,11 @@ class Dmx extends events_1.EventEmitter {
             console.error('Invalid DMX value: ' + value);
             return;
         }
+        let oldValue = this._dmxArray.slice(0);
         this._dmxArray[channel] = value;
-        this.emit('change', this._dmxArray.slice(0));
+        //send to dmx serial port
+        //update fixture if change is not from fixture
+        this.emit('change', this._dmxArray.slice(0), oldValue, channel);
     }
     getValue(channel) {
         if (!channel)

@@ -2,8 +2,8 @@
 import { EventEmitter } from 'events';
 import SerialPort from 'serialport';
 
-declare interface X32 {
-  on(event: 'change', listener: (dmxArray: number[]) => void): this;
+declare interface Dmx {
+  on(event: 'change', listener: (dmxArray: number[], oldArray: number[], channel?: number) => void): this;
 }
 
 class Dmx extends EventEmitter {
@@ -62,6 +62,8 @@ class Dmx extends EventEmitter {
     }
   };
 
+  claimed: dmxClaim[] = new Array(513).fill({fixture: -1, type: 'value'});
+
   constructor() {
     super();
   }
@@ -75,13 +77,16 @@ class Dmx extends EventEmitter {
       console.error('Invalid DMX value: ' + value)
       return;
     }
+    let oldValue = this._dmxArray.slice(0)
     this._dmxArray[channel] = value;
-    this.emit('change', this._dmxArray.slice(0));
+    //send to dmx serial port
+    //update fixture if change is not from fixture
+    this.emit('change', this._dmxArray.slice(0), oldValue, channel);
   }
 
   getValue(channel: number):number;
   getValue(): number[];
-  getValue(channel?: number | undefined): number | number[] | void {
+  getValue(channel?: number): number | number[] | void {
     if (!channel) return this._dmxArray.slice(0);
     if (!Number.isInteger(channel) || channel <= 0 || channel > 512) {
       console.error('Invalid DMX channel')
