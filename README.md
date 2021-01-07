@@ -1,4 +1,5 @@
 # pi-lightboard
+## \*\*Not yet functional\*\*
 ## To setup Raspberry Pi:
 - Install Raspberry Pi OS. This is tested with Raspberry Pi OS Lite, but should work with any version.
 - Run `sudo raspi-config` on pi
