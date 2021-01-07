@@ -44,7 +44,7 @@ function processApiCmd(msg: clientMsg): serverMsg {
         };
       break;
     case 'fixtures':
-      let valueArray: number[] = [];
+      let valueArray: fixtureProperties[] = [];
       for (let x = 0; x < globalObj.fixtures.length; x++){
         valueArray[x] = globalObj.fixtures[x].getValue();
       }
@@ -66,7 +66,7 @@ function processApiCmd(msg: clientMsg): serverMsg {
     case 'setValue':
       switch (msg.type) {
         case 'dmx':
-          globalObj.dmx.setValue(msg.number, msg.value);
+          globalObj.dmx.setValues([msg.number], [msg.value]);
           break;
         case 'fixture':
           globalObj.fixtures[msg.number].setValue(msg.value, msg.valueName);
@@ -77,7 +77,16 @@ function processApiCmd(msg: clientMsg): serverMsg {
         data: 'Command acknowleged',
       };
       break;
+    case 'getFixture':
+      let rtnData = globalObj.fixtures[msg.number].getValue()
+      rtnData.fixture = msg.number;
+      return {
+        type: 'fixtureProperties',
+        data: rtnData,
+      };
+      break;
     default:
+      console.error('Received bad command: ' + msg)
       return {
         type: 'info',
         data: 'Invalid command received',

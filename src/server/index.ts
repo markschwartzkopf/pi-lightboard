@@ -1,6 +1,6 @@
 'use strict';
 import('./server');
-import globalObj from './global'
+import globalObj from './global';
 import('./lightboard');
 
 //testing code:
@@ -10,6 +10,3 @@ import('./lightboard');
 setInterval(() => {
   console.log(globalObj.is('connectedClients'));
 }, 5000); */
-
-
-

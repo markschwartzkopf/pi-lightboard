@@ -46,8 +46,31 @@ class Fixture extends EventEmitter {
     return this.#dmxChannels.slice(0);
   }
 
-  getValue(valueName?: string): number {
-    if (!valueName) valueName = 'value';
+  getValue(valueName: string): number;
+  getValue(): fixtureProperties;
+  getValue(valueName?: string): number | fixtureProperties {
+    if (!valueName) {
+      let rtn: fixtureProperties = {fixture: -1, dmx: [], indirect: []};
+      for (let x = 0; x < definitions[this.type].dmx.length; x++) {
+        rtn.dmx.push({
+          property: definitions[this.type].dmx[x],
+          value: this.getValue(definitions[this.type].dmx[x]),
+        });
+      }
+      if (definitions[this.type].indirect) {
+        for (
+          let x = 0;
+          x < definitions[this.type].indirect!.names.length;
+          x++
+        ) {
+          rtn.indirect.push({
+            property: definitions[this.type].indirect!.names[x],
+            value: this.getValue(definitions[this.type].indirect!.names[x]),
+          });
+        }
+      }
+      return rtn;
+    }
     let dmxIndex = definitions[this.type].dmx.indexOf(<channelType>valueName);
     if (valueName && dmxIndex != -1) {
       return this._universe.getValue(this.#dmxChannels[dmxIndex]);
@@ -67,7 +90,7 @@ class Fixture extends EventEmitter {
     if (!valueName) valueName = 'value';
     let dmxIndex = definitions[this.type].dmx.indexOf(<channelType>valueName);
     if (valueName && dmxIndex != -1) {
-      this._universe.setValue(this.#dmxChannels[dmxIndex], newVal);
+      this._universe.setValues([this.#dmxChannels[dmxIndex]], [newVal]);
       return;
     }
     if (definitions[this.type].indirect) {
@@ -75,11 +98,13 @@ class Fixture extends EventEmitter {
         valueName
       );
       let dmxArray = this.#dmxChannels.map((n) => this._universe.getValue(n));
+      let dmxIndex = this.#dmxChannels
       if (indirectIndex != -1) {
-        definitions[this.type].indirect!.set(dmxArray, valueName, newVal);
+        this._universe.setValues(dmxIndex, definitions[this.type].indirect!.set(dmxArray, valueName, newVal))
         return;
       }
     }
+    console.error('No such property ' + valueName + ' on fixture')
   }
 
   static validateDmxArray(arr: any[], universe?: Dmx) {

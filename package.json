@@ -4,12 +4,12 @@
   "description": "DMX controller for Raspberry Pi",
   "main": "index.js",
   "scripts": {
-    "watch": "npm run watch:server & npm run watch:client",
-    "watch:server": "./node_modules/typescript/bin/tsc -p ./src/server --diagnostics --watch",
-    "watch:client": "./node_modules/typescript/bin/tsc -p ./src/client --diagnostics --watch",
-    "build": "npm run build:server && npm run build:client",
-    "build:server": "./node_modules/typescript/bin/tsc -p ./src/server --diagnostics",
-    "build:client": "./node_modules/typescript/bin/tsc -p ./src/client --diagnostics"
+    "watch": "npm-run-all -p watch:*",
+    "watch:server": "node ./node_modules/typescript/bin/tsc -p ./src/server --diagnostics --watch",
+    "watch:client": "node ./node_modules/typescript/bin/tsc -p ./src/client --diagnostics --watch",
+    "build": "npm-run-all -s build:*",
+    "build:server": "node ./node_modules/typescript/bin/tsc -p ./src/server --diagnostics",
+    "build:client": "node ./node_modules/typescript/bin/tsc -p ./src/client --diagnostics"
   },
   "repository": {
     "type": "git",
@@ -26,12 +26,12 @@
     "@types/node": "^14.14.10",
     "@types/serialport": "^8.0.1",
     "@types/ws": "^7.4.0",
+    "npm-run-all": "^4.1.5",
     "prettier": "^2.2.1",
     "typescript": "^4.1.2"
   },
   "dependencies": {
     "express": "^4.17.1",
-    "rpi-gpio": "^2.1.7",
     "serialport": "^9.0.2",
     "ws": "^7.4.0"
   }

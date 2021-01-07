@@ -61,26 +61,46 @@ class Dmx extends events_1.EventEmitter {
         };
         this.claimed = new Array(513).fill({ fixture: -1, type: 'value' });
     }
-    setValue(channel, value, duration) {
-        if (!Number.isInteger(channel) || channel <= 0 || channel > 512) {
-            console.error('Invalid DMX channel');
-            return;
-        }
-        if ((!value && value != 0) || value < 0 || value > 1) {
-            console.error('Invalid DMX value: ' + value);
-            return;
-        }
+    /* setValue(channel: number, value: number, duration?: number) {
+      if (!Number.isInteger(channel) || channel <= 0 || channel > 512) {
+        console.error('Invalid DMX channel');
+        return;
+      }
+      if ((!value && value != 0) || value < 0 || value > 1) {
+        console.error('Invalid DMX value: ' + value);
+        return;
+      }
+      let oldValue = this._dmxArray.slice(0);
+      this._dmxArray[channel] = value;
+      //send to dmx serial port
+      //update fixture if change is not from fixture
+      this.emit('change', this._dmxArray.slice(0), oldValue, channel);
+    } */
+    setValues(channel, value, duration) {
         let oldValue = this._dmxArray.slice(0);
-        this._dmxArray[channel] = value;
+        for (let x = 0; x < channel.length; x++) {
+            if (!Number.isInteger(channel[x]) ||
+                channel[x] <= 0 ||
+                channel[x] > 512) {
+                console.error('Invalid DMX channel: ' + channel[x]);
+                return;
+            }
+            if ((!value[x] && value[x] != 0) || value[x] < 0 || value[x] > 1) {
+                console.error('Invalid DMX value: ' + value[x]);
+                return;
+            }
+            this._dmxArray[channel[x]] = value[x];
+        }
         //send to dmx serial port
         //update fixture if change is not from fixture
         this.emit('change', this._dmxArray.slice(0), oldValue, channel);
     }
     getValue(channel) {
-        if (!channel)
+        if (channel == undefined)
             return this._dmxArray.slice(0);
         if (!Number.isInteger(channel) || channel <= 0 || channel > 512) {
-            console.error('Invalid DMX channel');
+            if (channel != 0)
+                console.error('Invalid DMX channel:' + channel);
             return;
         }
         return this._dmxArray[channel];

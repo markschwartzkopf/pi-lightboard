@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <link rel="stylesheet" type="text/css" href="faders.css" />
+    <link rel="stylesheet" type="text/css" href="buttons.css" />
     <style>
       :root {
         --fader-width: 4rem;
@@ -35,6 +36,7 @@
         border: 1px solid #888888;
         border-radius: 3px;
         overflow: hidden;
+        cursor: default;
       }
       #grd {
         place-items: center center;
@@ -46,17 +48,24 @@
         -webkit-appearance: none; /* safari, chrome, edge and ie mobile */
         appearance: none; /* rest */
       }
+      .empty-fader {
+        background-color: rgba(214, 214, 214, 0.5);
+        --margin: 2px;
+        margin: var(--margin);
+        width: calc(100% - (2 * var(--margin)));
+        height: calc(100% - (2 * var(--margin)));
+        border-radius: calc(var(--fader-height) / 50);
+      }
       /* body * {
         background-color: white;
       } */
     </style>
   </head>
   <body>
-    <div id="grd" style="display: grid;"></div>
+    <div id="grd" style="display: grid"></div>
     <br />
     <button id="dmx-format">DMX</button>
     <button id="fixtures-format">Fixtures</button>
-    <div id="test" style="background-color: white; height: 15rem; width: 30rem;" ></div>
 
     <script src="index.js"></script>
   </body>

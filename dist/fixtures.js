@@ -51,8 +51,24 @@ class Fixture extends events_1.EventEmitter {
         return __classPrivateFieldGet(this, _dmxChannels).slice(0);
     }
     getValue(valueName) {
-        if (!valueName)
-            valueName = 'value';
+        if (!valueName) {
+            let rtn = { fixture: -1, dmx: [], indirect: [] };
+            for (let x = 0; x < fixtureDefinitions_1.default[this.type].dmx.length; x++) {
+                rtn.dmx.push({
+                    property: fixtureDefinitions_1.default[this.type].dmx[x],
+                    value: this.getValue(fixtureDefinitions_1.default[this.type].dmx[x]),
+                });
+            }
+            if (fixtureDefinitions_1.default[this.type].indirect) {
+                for (let x = 0; x < fixtureDefinitions_1.default[this.type].indirect.names.length; x++) {
+                    rtn.indirect.push({
+                        property: fixtureDefinitions_1.default[this.type].indirect.names[x],
+                        value: this.getValue(fixtureDefinitions_1.default[this.type].indirect.names[x]),
+                    });
+                }
+            }
+            return rtn;
+        }
         let dmxIndex = fixtureDefinitions_1.default[this.type].dmx.indexOf(valueName);
         if (valueName && dmxIndex != -1) {
             return this._universe.getValue(__classPrivateFieldGet(this, _dmxChannels)[dmxIndex]);
@@ -70,17 +86,19 @@ class Fixture extends events_1.EventEmitter {
             valueName = 'value';
         let dmxIndex = fixtureDefinitions_1.default[this.type].dmx.indexOf(valueName);
         if (valueName && dmxIndex != -1) {
-            this._universe.setValue(__classPrivateFieldGet(this, _dmxChannels)[dmxIndex], newVal);
+            this._universe.setValues([__classPrivateFieldGet(this, _dmxChannels)[dmxIndex]], [newVal]);
             return;
         }
         if (fixtureDefinitions_1.default[this.type].indirect) {
             let indirectIndex = fixtureDefinitions_1.default[this.type].indirect.names.indexOf(valueName);
             let dmxArray = __classPrivateFieldGet(this, _dmxChannels).map((n) => this._universe.getValue(n));
+            let dmxIndex = __classPrivateFieldGet(this, _dmxChannels);
             if (indirectIndex != -1) {
-                fixtureDefinitions_1.default[this.type].indirect.set(dmxArray, valueName, newVal);
+                this._universe.setValues(dmxIndex, fixtureDefinitions_1.default[this.type].indirect.set(dmxArray, valueName, newVal));
                 return;
             }
         }
+        console.error('No such property ' + valueName + ' on fixture');
     }
     static validateDmxArray(arr, universe) {
         let valid = true;

@@ -3,7 +3,10 @@ import { EventEmitter } from 'events';
 import SerialPort from 'serialport';
 
 declare interface Dmx {
-  on(event: 'change', listener: (dmxArray: number[], oldArray: number[], channel?: number) => void): this;
+  on(
+    event: 'change',
+    listener: (dmxArray: number[], oldArray: number[], channel?: number) => void
+  ): this;
 }
 
 class Dmx extends EventEmitter {
@@ -62,39 +65,60 @@ class Dmx extends EventEmitter {
     }
   };
 
-  claimed: dmxClaim[] = new Array(513).fill({fixture: -1, type: 'value'});
+  claimed: dmxClaim[] = new Array(513).fill({ fixture: -1, type: 'value' });
 
   constructor() {
     super();
   }
 
-  setValue(channel: number, value: number, duration?: number) {
+  /* setValue(channel: number, value: number, duration?: number) {
     if (!Number.isInteger(channel) || channel <= 0 || channel > 512) {
-      console.error('Invalid DMX channel')
+      console.error('Invalid DMX channel');
       return;
     }
-    if ((!value && value !=0) || value < 0 || value > 1) {
-      console.error('Invalid DMX value: ' + value)
+    if ((!value && value != 0) || value < 0 || value > 1) {
+      console.error('Invalid DMX value: ' + value);
       return;
     }
-    let oldValue = this._dmxArray.slice(0)
+    let oldValue = this._dmxArray.slice(0);
     this._dmxArray[channel] = value;
+    //send to dmx serial port
+    //update fixture if change is not from fixture
+    this.emit('change', this._dmxArray.slice(0), oldValue, channel);
+  } */
+
+  setValues(channel: number[], value: number[], duration?: number) {
+    let oldValue = this._dmxArray.slice(0);
+    for (let x = 0; x < channel.length; x++) {
+      if (
+        !Number.isInteger(channel[x]) ||
+        channel[x] <= 0 ||
+        channel[x] > 512
+      ) {
+        console.error('Invalid DMX channel: ' + channel[x]);
+        return;
+      }
+      if ((!value[x] && value[x] != 0) || value[x] < 0 || value[x] > 1) {
+        console.error('Invalid DMX value: ' + value[x]);
+        return;
+      }
+      this._dmxArray[channel[x]] = value[x];
+    }
     //send to dmx serial port
     //update fixture if change is not from fixture
     this.emit('change', this._dmxArray.slice(0), oldValue, channel);
   }
 
-  getValue(channel: number):number;
+  getValue(channel: number): number;
   getValue(): number[];
   getValue(channel?: number): number | number[] | void {
-    if (!channel) return this._dmxArray.slice(0);
+    if (channel == undefined) return this._dmxArray.slice(0);
     if (!Number.isInteger(channel) || channel <= 0 || channel > 512) {
-      console.error('Invalid DMX channel')
+      if (channel != 0) console.error('Invalid DMX channel:' + channel);
       return;
     }
     return this._dmxArray[channel];
   }
-
 }
 
 export default Dmx;

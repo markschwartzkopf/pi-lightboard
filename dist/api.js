@@ -69,7 +69,7 @@ function processApiCmd(msg) {
         case 'setValue':
             switch (msg.type) {
                 case 'dmx':
-                    global_1.default.dmx.setValue(msg.number, msg.value);
+                    global_1.default.dmx.setValues([msg.number], [msg.value]);
                     break;
                 case 'fixture':
                     global_1.default.fixtures[msg.number].setValue(msg.value, msg.valueName);
@@ -80,7 +80,16 @@ function processApiCmd(msg) {
                 data: 'Command acknowleged',
             };
             break;
+        case 'getFixture':
+            let rtnData = global_1.default.fixtures[msg.number].getValue();
+            rtnData.fixture = msg.number;
+            return {
+                type: 'fixtureProperties',
+                data: rtnData,
+            };
+            break;
         default:
+            console.error('Received bad command: ' + msg);
             return {
                 type: 'info',
                 data: 'Invalid command received',
