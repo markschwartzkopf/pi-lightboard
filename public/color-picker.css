@@ -1,0 +1,15 @@
+.color-picker {
+  position: relative;
+  cursor: crosshair;
+  background: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 1)),
+    linear-gradient(
+      to right,
+      #ff0000,
+      #ffff00,
+      #00ff00,
+      #00ffff,
+      #0000ff,
+      #ff00ff,
+      #ff0000
+    );
+}
