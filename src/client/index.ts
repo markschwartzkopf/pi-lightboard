@@ -251,6 +251,7 @@ function flash(div: HTMLDivElement, off?: 'off') {
 }
 
 function processDataFromServer(msg: serverMsg) {
+  console.log(msg)
   switch (msg.type) {
     case 'dmxValues':
       init('dmxValues');

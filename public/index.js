@@ -221,6 +221,7 @@ function flash(div, off) {
     div.style.backgroundColor = bgcolor;
 }
 function processDataFromServer(msg) {
+    console.log(msg);
     switch (msg.type) {
         case 'dmxValues':
             init('dmxValues');

@@ -1,4 +1,13 @@
 "use strict";
+/* --r1: 255;
+        --g1: 214;
+        --b1: 170;
+        --r2: 201;
+        --g2: 226;
+        --b2: 255;
+        --r3: 255;
+        --g3: 147;
+        --b3: 41; */
 Object.defineProperty(exports, "__esModule", { value: true });
 const definitions = {
     basic: { dmx: ['value'] },

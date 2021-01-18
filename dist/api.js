@@ -4,15 +4,22 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.processDmxValuesUpdate = exports.processApiCmd = void 0;
-const global_1 = __importDefault(require("./global"));
+const global_1 = require("./global");
 const fixtures_1 = __importDefault(require("./fixtures"));
 function processApiCmd(msg) {
     switch (msg.command) {
+        case 'init':
+            console.log('init cmd received');
+            return {
+                type: 'info',
+                data: 'Init command received',
+            };
+            break;
         case 'dmx':
-            if (global_1.default.dmx) {
+            if (global_1.dmx) {
                 return {
                     type: 'dmxValues',
-                    data: global_1.default.dmx.getValue(),
+                    data: global_1.dmx.getValue(),
                 };
             }
             else
@@ -22,14 +29,14 @@ function processApiCmd(msg) {
                 };
             break;
         case 'dmxClaims':
-            if (global_1.default.dmx) {
+            if (global_1.dmx) {
                 let claimArray = [];
-                for (let x = 0; x < global_1.default.dmx.claimed.length; x++) {
-                    if (global_1.default.dmx.claimed[x].fixture != -1 &&
-                        fixtures_1.default.getFixtureById(global_1.default.dmx.claimed[x].fixture)) {
+                for (let x = 0; x < global_1.dmx.claimed.length; x++) {
+                    if (global_1.dmx.claimed[x].fixture != -1 &&
+                        fixtures_1.default.getFixtureById(global_1.dmx.claimed[x].fixture)) {
                         claimArray[x] = {
-                            fixtureLabel: fixtures_1.default.getFixtureById(global_1.default.dmx.claimed[x].fixture).label,
-                            type: global_1.default.dmx.claimed[x].type,
+                            fixtureLabel: fixtures_1.default.getFixtureById(global_1.dmx.claimed[x].fixture).label,
+                            type: global_1.dmx.claimed[x].type,
                         };
                     }
                     else
@@ -48,8 +55,8 @@ function processApiCmd(msg) {
             break;
         case 'fixtures':
             let valueArray = [];
-            for (let x = 0; x < global_1.default.fixtures.length; x++) {
-                valueArray[x] = global_1.default.fixtures[x].getValue();
+            for (let x = 0; x < global_1.fixtures.all.length; x++) {
+                valueArray[x] = global_1.fixtures.all[x].getValue();
             }
             return {
                 type: 'fixtureValues',
@@ -58,8 +65,8 @@ function processApiCmd(msg) {
             break;
         case 'fixtureLabels':
             let labelArray = [];
-            for (let x = 0; x < global_1.default.fixtures.length; x++) {
-                labelArray[x] = global_1.default.fixtures[x].label;
+            for (let x = 0; x < global_1.fixtures.all.length; x++) {
+                labelArray[x] = global_1.fixtures.all[x].label;
             }
             return {
                 type: 'fixtureLabels',
@@ -69,10 +76,10 @@ function processApiCmd(msg) {
         case 'setValue':
             switch (msg.type) {
                 case 'dmx':
-                    global_1.default.dmx.setValues([msg.number], [msg.value]);
+                    global_1.dmx.setValues([msg.number], [msg.value]);
                     break;
                 case 'fixture':
-                    global_1.default.fixtures[msg.number].setValue(msg.value, msg.valueName);
+                    global_1.fixtures.all[msg.number].setValue(msg.value, msg.valueName);
                     break;
             }
             return {
@@ -81,7 +88,7 @@ function processApiCmd(msg) {
             };
             break;
         case 'getFixture':
-            let rtnData = global_1.default.fixtures[msg.number].getValue();
+            let rtnData = global_1.fixtures.all[msg.number].getValue();
             rtnData.fixture = msg.number;
             return {
                 type: 'fixtureProperties',

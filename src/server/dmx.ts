@@ -120,5 +120,4 @@ class Dmx extends EventEmitter {
     return this._dmxArray[channel];
   }
 }
-
 export default Dmx;

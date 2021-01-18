@@ -22,9 +22,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const global_1 = __importDefault(require("./global"));
+/* import globalObj from './global'; */
+/* let {dmx} = require('./global') as {dmx: Dmx, fixtures: Fixture[]} */
+const global_1 = require("./global");
 const api = __importStar(require("./api"));
-global_1.default.server = {};
 const express_1 = __importDefault(require("express"));
 const app = express_1.default();
 const ws_1 = __importDefault(require("ws"));
@@ -33,6 +34,10 @@ class myWebSocket extends ws_1.default {
         super(...arguments);
         this.isAlive = true;
         this.ip = 'no ip given';
+        this.faders = [];
+        this.redrawFadersJSON = { new: '', old: '' };
+        this.updateFadersJSON = { new: '', old: '' };
+        this.selectedFixtures = [];
     }
 }
 app.use(express_1.default.static(__dirname + '/../public', { index: 'index.html' }));
@@ -64,15 +69,9 @@ wss.on('connection', (ws, req) => {
         ws.send(JSON.stringify(api.processDmxValuesUpdate(dmxValues)));
         ws.send(JSON.stringify(api.processApiCmd({ command: 'fixtures' })));
     };
-    ws.broadcast = (msg) => {
-        ws.send(JSON.stringify(msg));
-    };
-    global_1.default.dmx.on('change', ws.dmxValuesUpdate);
-    global_1.default.event.on('broadcast', ws.broadcast);
-    //console.log(globalObj.dmx)
+    global_1.dmx.on('change', ws.dmxValuesUpdate);
     ws.on('close', () => {
-        global_1.default.dmx.removeListener('change', ws.dmxValuesUpdate);
-        global_1.default.event.removeListener('broadcast', ws.broadcast);
+        global_1.dmx.removeListener('change', ws.dmxValuesUpdate);
         console.log('Connection properly closed for: ' + ws.ip);
     });
 });
@@ -86,13 +85,13 @@ const beatInterval = setInterval(() => {
         ws.ping();
     });
 }, 30000);
-global_1.default.connectedClients = () => {
-    let clients = [];
-    wss.clients.forEach((ws) => {
-        clients.push(ws.ip);
-    });
-    return clients;
-};
+/* globalObj.connectedClients = () => {
+  let clients: string[] = [];
+  wss.clients.forEach((ws) => {
+    clients.push((<myWebSocket>ws).ip);
+  });
+  return clients;
+}; */
 wss.on('close', () => {
     clearInterval(beatInterval);
 });

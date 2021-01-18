@@ -5,10 +5,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const fs_1 = __importDefault(require("fs"));
 const fixtures_1 = __importDefault(require("./fixtures"));
-const global_1 = __importDefault(require("./global"));
-global_1.default.fixtures = [
-    new fixtures_1.default('One', 'basic', [0], global_1.default.dmx),
-    new fixtures_1.default('Two', 'basic', [0], global_1.default.dmx),
+const global_1 = require("./global");
+global_1.fixtures.all = [
+    new fixtures_1.default('One', 'basic', [0], global_1.dmx),
+    new fixtures_1.default('Two', 'basic', [0], global_1.dmx),
 ];
 fs_1.default.readFile(__dirname + '/../fixtures.json', (err, data) => {
     if (err) {
@@ -27,15 +27,15 @@ fs_1.default.readFile(__dirname + '/../fixtures.json', (err, data) => {
             fileFixtures = [];
         }
         if (!corrupt)
-            global_1.default.fixtures = [];
+            global_1.fixtures.all = [];
         if (Array.isArray(fileFixtures) && !corrupt) {
             for (let x = 0; x < fileFixtures.length; x++) {
                 if (typeof fileFixtures[x] == 'object' &&
                     Object.keys(fileFixtures[x]).length == 3 &&
                     fileFixtures[x].label &&
                     fileFixtures[x].type &&
-                    fixtures_1.default.validateDmxArray(fileFixtures[x].dmx, global_1.default.dmx)) {
-                    global_1.default.fixtures.push(new fixtures_1.default(fileFixtures[x].label, fileFixtures[x].type, fileFixtures[x].dmx, global_1.default.dmx));
+                    fixtures_1.default.validateDmxArray(fileFixtures[x].dmx, global_1.dmx)) {
+                    global_1.fixtures.all.push(new fixtures_1.default(fileFixtures[x].label, fileFixtures[x].type, fileFixtures[x].dmx, global_1.dmx));
                 }
                 else
                     corrupt = true;
@@ -47,11 +47,11 @@ fs_1.default.readFile(__dirname + '/../fixtures.json', (err, data) => {
 });
 function updateFixtureFile() {
     let fixtureJSON = [];
-    for (let x = 0; x < global_1.default.fixtures.length; x++) {
+    for (let x = 0; x < global_1.fixtures.all.length; x++) {
         fixtureJSON.push({
-            label: global_1.default.fixtures[x].label,
-            type: global_1.default.fixtures[x].type,
-            dmx: global_1.default.fixtures[x].dmxChannels,
+            label: global_1.fixtures.all[x].label,
+            type: global_1.fixtures.all[x].type,
+            dmx: global_1.fixtures.all[x].dmxChannels,
         });
     }
     let data = JSON.stringify(fixtureJSON, null, 2);

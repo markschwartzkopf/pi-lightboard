@@ -1,15 +1,84 @@
 .color-picker {
+  --r1: 255;
+  --g1: 0;
+  --b1: 0;
+  --r2: 0;
+  --g2: 255;
+  --b2: 0;
+  --r3: 0;
+  --g3: 0;
+  --b3: 255;
+  --maxr: max(
+    calc(var(--r1) + var(--r2)),
+    calc(var(--r2) + var(--r3)),
+    calc(var(--r3) + var(--r1))
+  );
+  --maxg: max(
+    calc(var(--g1) + var(--g2)),
+    calc(var(--g2) + var(--g3)),
+    calc(var(--g3) + var(--g1))
+  );
+  --maxb: max(
+    calc(var(--b1) + var(--b2)),
+    calc(var(--b2) + var(--b3)),
+    calc(var(--b3) + var(--b1))
+  );
+  --maxrgb: max(var(--maxr), var(--maxg), var(--maxb));
+  --multiplier: calc(255 / var(--maxrgb));
+  --color1: rgb(
+    calc(var(--r1) * var(--multiplier)),
+    calc(var(--g1) * var(--multiplier)),
+    calc(var(--b1) * var(--multiplier))
+  );
+  --color2: rgb(
+    calc(var(--r2) * var(--multiplier)),
+    calc(var(--g2) * var(--multiplier)),
+    calc(var(--b2) * var(--multiplier))
+  );
+  --color3: rgb(
+    calc(var(--r3) * var(--multiplier)),
+    calc(var(--g3) * var(--multiplier)),
+    calc(var(--b3) * var(--multiplier))
+  );
+  --color15: rgb(
+    calc((var(--r1) + var(--r2)) * var(--multiplier)),
+    calc((var(--g1) + var(--g2)) * var(--multiplier)),
+    calc((var(--b1) + var(--b2)) * var(--multiplier))
+  );
+  --color25: rgb(
+    calc((var(--r2) + var(--r3)) * var(--multiplier)),
+    calc((var(--g2) + var(--g3)) * var(--multiplier)),
+    calc((var(--b2) + var(--b3)) * var(--multiplier))
+  );
+  --color35: rgb(
+    calc((var(--r3) + var(--r1)) * var(--multiplier)),
+    calc((var(--g3) + var(--g1)) * var(--multiplier)),
+    calc((var(--b3) + var(--b1)) * var(--multiplier))
+  );
+
+  --maxrgb-full: max(
+    calc(var(--r1) + var(--r2) + var(--r3)),
+    calc(var(--g1) + var(--g2) + var(--g3)),
+    calc(var(--b1) + var(--b2) + var(--b3))
+  );
+  --multiplier-full: calc(255 / var(--maxrgb-full));
+  --color-full: rgb(
+    calc((var(--r1) + var(--r2) + var(--r3)) * var(--multiplier)),
+    calc((var(--g1) + var(--g2) + var(--g3)) * var(--multiplier)),
+    calc((var(--b1) + var(--b2) + var(--b3)) * var(--multiplier))
+  );
+
   position: relative;
   cursor: crosshair;
-  background: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 1)),
+  background: linear-gradient(rgba(255, 255, 255, 0), var(--color-full)),
     linear-gradient(
       to right,
-      #ff0000,
-      #ffff00,
-      #00ff00,
-      #00ffff,
-      #0000ff,
-      #ff00ff,
-      #ff0000
+      var(--color1),
+      var(--color15),
+      var(--color2),
+      var(--color25),
+      var(--color3),
+      var(--color35),
+      var(--color1)
     );
 }

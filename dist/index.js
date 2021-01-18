@@ -18,6 +18,6 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-Object.defineProperty(exports, "__esModule", { value: true });
 Promise.resolve().then(() => __importStar(require('./server')));
+Promise.resolve().then(() => __importStar(require('./global')));
 Promise.resolve().then(() => __importStar(require('./lightboard')));

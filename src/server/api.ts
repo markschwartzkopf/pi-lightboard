@@ -1,15 +1,22 @@
 'use strict';
 export { processApiCmd, processDmxValuesUpdate };
-import globalObj from './global';
+import { dmx, fixtures } from './global';
 import Fixture from './fixtures';
 
 function processApiCmd(msg: clientMsg): serverMsg {
   switch (msg.command) {
+    case 'init':
+      console.log('init cmd received')
+      return {
+        type: 'info',
+        data: 'Init command received',
+      };
+      break;
     case 'dmx':
-      if (globalObj.dmx) {
+      if (dmx) {
         return {
           type: 'dmxValues',
-          data: globalObj.dmx.getValue(),
+          data: dmx.getValue(),
         };
       } else
         return {
@@ -18,18 +25,18 @@ function processApiCmd(msg: clientMsg): serverMsg {
         };
       break;
     case 'dmxClaims':
-      if (globalObj.dmx) {
+      if (dmx) {
         let claimArray: dmxClaimToClient[] = [];
-        for (let x = 0; x < globalObj.dmx.claimed.length; x++) {
+        for (let x = 0; x < dmx.claimed.length; x++) {
           if (
-            globalObj.dmx.claimed[x].fixture != -1 &&
-            Fixture.getFixtureById(globalObj.dmx.claimed[x].fixture)
+            dmx.claimed[x].fixture != -1 &&
+            Fixture.getFixtureById(dmx.claimed[x].fixture)
           ) {
             claimArray[x] = {
               fixtureLabel: Fixture.getFixtureById(
-                globalObj.dmx.claimed[x].fixture
+                dmx.claimed[x].fixture
               )!.label,
-              type: globalObj.dmx.claimed[x].type,
+              type: dmx.claimed[x].type,
             };
           } else claimArray[x] = null;
         }
@@ -45,8 +52,8 @@ function processApiCmd(msg: clientMsg): serverMsg {
       break;
     case 'fixtures':
       let valueArray: fixtureProperties[] = [];
-      for (let x = 0; x < globalObj.fixtures.length; x++){
-        valueArray[x] = globalObj.fixtures[x].getValue();
+      for (let x = 0; x < fixtures.all.length; x++){
+        valueArray[x] = fixtures.all[x].getValue();
       }
       return {
         type: 'fixtureValues',
@@ -55,8 +62,8 @@ function processApiCmd(msg: clientMsg): serverMsg {
       break;
     case 'fixtureLabels':
       let labelArray: string[] = [];
-      for (let x = 0; x < globalObj.fixtures.length; x++){
-        labelArray[x] = globalObj.fixtures[x].label
+      for (let x = 0; x < fixtures.all.length; x++){
+        labelArray[x] = fixtures.all[x].label
       }
       return {
         type: 'fixtureLabels',
@@ -66,10 +73,10 @@ function processApiCmd(msg: clientMsg): serverMsg {
     case 'setValue':
       switch (msg.type) {
         case 'dmx':
-          globalObj.dmx.setValues([msg.number], [msg.value]);
+          dmx.setValues([msg.number], [msg.value]);
           break;
         case 'fixture':
-          globalObj.fixtures[msg.number].setValue(msg.value, msg.valueName);
+          fixtures.all[msg.number].setValue(msg.value, msg.valueName);
           break;
       }
       return {
@@ -78,7 +85,7 @@ function processApiCmd(msg: clientMsg): serverMsg {
       };
       break;
     case 'getFixture':
-      let rtnData = globalObj.fixtures[msg.number].getValue()
+      let rtnData = fixtures.all[msg.number].getValue()
       rtnData.fixture = msg.number;
       return {
         type: 'fixtureProperties',

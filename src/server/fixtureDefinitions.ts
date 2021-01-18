@@ -1,3 +1,13 @@
+/* --r1: 255;
+        --g1: 214;
+        --b1: 170;
+        --r2: 201;
+        --g2: 226;
+        --b2: 255;
+        --r3: 255;
+        --g3: 147;
+        --b3: 41; */
+
 const definitions: fixtureDefinitions = {
   basic: { dmx: ['value'] },
   basicRGB: {
@@ -24,7 +34,6 @@ type indirect = {
   get: (dmx: number[], indirectProperty: string) => number;
 };
 
-
 //functions for processing indirect properties to and from DMX:
 
 function rgbFromHsv(
@@ -50,8 +59,8 @@ function rgbFromHsv(
   return hsvToRgb(hsv);
 }
 
-function hsvFromRgb(rgb: number[], type:string): number {
-  let hsv=rgbToHsv(rgb);
+function hsvFromRgb(rgb: number[], type: string): number {
+  let hsv = rgbToHsv(rgb);
   switch (type) {
     case 'hue':
       return hsv[0];
@@ -124,8 +133,8 @@ function rgbToHsv(rgb: number[]): [number, number, number] {
         h = (r - g) / d + 4;
         break;
       default:
-        console.error('Error in rgbToHsv')
-        h = 0;//Should never happen
+        console.error('Error in rgbToHsv');
+        h = 0; //Should never happen
     }
     h /= 6;
   }
