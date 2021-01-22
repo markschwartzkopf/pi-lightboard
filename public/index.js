@@ -1,29 +1,5 @@
 "use strict";
-let format = 'fixture';
-//let dmxLabels: string[] = [...Array(513).keys()].map(String);
-//let fixtureLabels: string[] = [...Array(1).keys()].map(String);
-let labels = {
-    dmx: [...Array(513).keys()].map(String),
-    fixture: [...Array(1).keys()].map(String),
-    fixtureProperty: [],
-};
-let values = {
-    dmx: new Array(513).fill(0),
-    fixture: new Array(1).fill(0),
-    fixtureProperty: [],
-};
-let onScreenFaders = [];
-let selectedFixture = -1;
-let selectedFixtureProperties = [];
-let initialized = {
-    dmxValues: false,
-    dmxLabels: false,
-    fixtureValues: false,
-    fixtureLabels: false,
-    all: false,
-    retries: 0,
-};
-let initTimeout;
+let faders = [];
 //fix button display
 let dmxButton = document.getElementById('dmx-format');
 let fixturesButton = document.getElementById('fixtures-format');
@@ -60,109 +36,98 @@ socket.onopen = () => {
         }
         processDataFromServer(msg);
     };
-    init();
+    sendToSocket({ command: 'init' });
 };
 function sendToSocket(msg) {
     socket.send(JSON.stringify(msg));
 }
 dmxButton.onclick = () => {
-    format = 'dmx';
-    reDrawFaders();
+    /* format = 'dmx';
+    reDrawFaders(); */
 };
 fixturesButton.onclick = () => {
-    format = 'fixture';
-    reDrawFaders();
+    /*  format = 'fixture';
+    reDrawFaders(); */
 };
-reDrawFaders();
-function reDrawFaders() {
-    let faderType;
-    switch (format) {
-        case 'dmx':
-            selectedFixture = -1;
-            faderType = 'dmx';
-            dmxButton.style.backgroundColor = 'yellow';
-            fixturesButton.style.backgroundColor = '';
-            dmxButton.blur();
-            break;
-        case 'fixture':
-            selectedFixture = -1;
-            faderType = 'fixture';
-            dmxButton.style.backgroundColor = '';
-            fixturesButton.style.backgroundColor = 'yellow';
-            fixturesButton.blur();
-            break;
-        case 'fixtureProperty':
-            faderType = 'fixtureProperty';
-            break;
-        default:
-    }
-    drawFaders(values[format], labels[format], format);
-}
-function drawFaders(faderArray, nameArray, faderTyp, faderNumber) {
-    if (faderArray.length != nameArray.length ||
-        (Array.isArray(faderTyp) && faderArray.length != faderTyp.length)) {
-        console.error("'drawFaders' needs arrays to be the same size");
-        return;
-    }
-    let startloop = 0;
-    if (faderTyp == 'dmx')
-        startloop = 1;
-    if (!Array.isArray(faderTyp)) {
-        faderTyp = new Array(faderArray.length).fill(String(faderTyp));
-    }
-    if (!faderNumber) {
-        faderNumber = [...Array(faderArray.length).keys()];
-    }
-    onScreenFaders = [];
+/* reDrawFaders(); */
+/* function reDrawFaders() {
+  let faderType: faderType;
+  switch (format) {
+    case 'dmx':
+      selectedFixture = -1;
+      faderType = 'dmx';
+      dmxButton.style.backgroundColor = 'yellow';
+      fixturesButton.style.backgroundColor = '';
+      dmxButton.blur();
+      break;
+    case 'fixture':
+      selectedFixture = -1;
+      faderType = 'fixture';
+      dmxButton.style.backgroundColor = '';
+      fixturesButton.style.backgroundColor = 'yellow';
+      fixturesButton.blur();
+      break;
+    case 'fixtureProperty':
+      faderType = 'fixtureProperty';
+      break;
+    default:
+  }
+  drawFaders(values[format], labels[format], format);
+} */
+function drawFaders(newFaders) {
+    faders = newFaders;
     let grd = document.getElementById('grd');
     grd.innerHTML = '';
     grd.style.gridAutoColumns = 'var(--fader-width)';
     grd.style.gridTemplateRows =
         'var(--val-height) var(--fader-height) var(--name-height)';
-    for (let x = startloop; x < faderArray.length; x++) {
-        onScreenFaders.push({ type: faderTyp[x], number: faderNumber[x] });
-        let column = x + 1 - startloop + '/' + (x + 2 - startloop);
+    for (let x = 0; x < faders.length; x++) {
+        let column = x + 1 + '/' + (x + 2);
         let val = document.createElement('input');
-        val.id = 'val-' + faderTyp[x] + '-' + faderNumber[x];
-        val.value = String(Math.round(faderArray[x] * 255));
+        val.id = 'val-' + x;
+        val.value = String(Math.round(faders[x].value));
         val.className = 'val';
         val.style.gridColumn = column;
         val.style.gridRow = '1/2';
-        val.onkeyup = (ev) => {
-            if (ev.keyCode == 13) {
-                let [element, type, numString] = val.id.split('-');
-                let number = parseInt(numString) / 255;
-                processInput(element, type, number, parseFloat(val.value));
-            }
-            if (ev.keyCode == 27) {
-                resetElement(val.id);
-            }
-        };
-        val.onblur = () => {
+        /* val.onkeyup = (ev) => {
+          if (ev.keyCode == 13) {
+            let [element, type, numString] = val.id.split('-') as [
+              'val' | 'fader',
+              faderType,
+              string
+            ];
+            let number = parseInt(numString) / 255;
+            processInput(element, type, number, parseFloat(val.value));
+          }
+          if (ev.keyCode == 27) {
             resetElement(val.id);
-        };
-        if (faderArray[x] || faderArray[x] == 0) {
-            grd.appendChild(val);
-        }
-        else {
-            let emptyVal = document.createElement('div');
-            emptyVal.innerHTML = 'No DMX';
-            emptyVal.className = 'val';
-            grd.appendChild(emptyVal);
-        }
+          }
+        }; */
+        /* val.onblur = () => {
+          resetElement(val.id);
+        }; */
+        grd.appendChild(val);
         let fader = document.createElement('input');
-        fader.id = 'fader-' + faderTyp[x] + '-' + faderNumber[x];
+        fader.id = 'fader-' + x;
         fader.setAttribute('type', 'range');
-        fader.min = '0';
-        fader.max = '1';
-        fader.step = '0.001';
-        fader.value = String(faderArray[x]);
+        let range = getFaderRange(faders[x].fader);
+        fader.min = String(range.min);
+        fader.max = String(range.max);
+        fader.step = String(range.step);
+        fader.value = String(faders[x].value);
+        console.log(x +
+            ' min:' +
+            range.min +
+            ' max:' +
+            range.max +
+            ' step:' +
+            range.step +
+            ' value:' +
+            faders[x].value);
         fader.style.width = 'var(--fader-height)'; //swapped because of 270deg rotation
         fader.style.height = 'var(--fader-width)'; //swapped because of 270deg rotation
         fader.oninput = (ev) => {
-            let [element, type, numString] = fader.id.split('-');
-            let number = parseInt(numString);
-            processInput(element, type, number, parseFloat(fader.value));
+            processInput(fader);
         };
         fader.onchange = () => {
             fader.blur();
@@ -175,29 +140,25 @@ function drawFaders(faderArray, nameArray, faderTyp, faderNumber) {
         div.style.gridRow = '2/3';
         div.style.height = 'var(--fader-height)';
         div.style.width = 'var(--fader-width)';
-        if (faderArray[x] || faderArray[x] == 0) {
-            div.appendChild(fader);
-        }
-        else {
-            div.style.padding = '5px';
-            let emptyFader = document.createElement('div');
-            emptyFader.className = 'empty-fader';
-            div.appendChild(emptyFader);
-        }
+        div.appendChild(fader);
         grd.appendChild(div);
         div = document.createElement('div');
-        div.id = 'label-' + faderTyp[x] + '-' + faderNumber[x];
-        div.innerHTML = nameArray[x];
+        div.id = 'label-' + x;
+        div.innerHTML = faders[x].label; //add sub labels
         div.className = 'fader-name';
         div.style.gridColumn = column;
         div.style.gridRow = '3/4';
         div.oncontextmenu = (e) => {
             e.preventDefault();
-            let [element, type, numString] = div.id.split('-');
+            /* let [element, type, numString] = div.id.split('-') as [
+              'label',
+              faderType,
+              string
+            ];
             if (type == 'fixture') {
-                let number = parseInt(numString);
-                sendToSocket({ command: 'getFixture', number: number });
-            }
+              let number = parseInt(numString);
+              sendToSocket({ command: 'getFixture', number: number });
+            } */
         };
         div.onmousedown = (e) => {
             if (e.buttons == 1)
@@ -221,142 +182,12 @@ function flash(div, off) {
     div.style.backgroundColor = bgcolor;
 }
 function processDataFromServer(msg) {
-    console.log(msg);
     switch (msg.type) {
-        case 'dmxValues':
-            init('dmxValues');
-            onValues(msg.data, 'dmx');
-            values.dmx = msg.data;
-            break;
-        case 'dmxClaims':
-            init('dmxLabels');
-            let newLabels = [];
-            for (let x = 0; x < msg.data.length; x++) {
-                if (msg.data[x]) {
-                    let div = document.createElement('div');
-                    let p = document.createElement('p');
-                    p.style.margin = '0em';
-                    p.innerHTML = x.toString();
-                    div.appendChild(p);
-                    p = document.createElement('p');
-                    p.style.margin = '0em';
-                    p.style.color = 'green';
-                    p.innerHTML = msg.data[x].type;
-                    div.appendChild(p);
-                    p = document.createElement('p');
-                    p.style.margin = '0em';
-                    p.style.color = 'blue';
-                    p.innerHTML = msg.data[x].fixtureLabel;
-                    div.appendChild(p);
-                    //newLabels[x] = msg.data[x]!.type + '\n' + msg.data[x]!.fixtureLabel;
-                    newLabels[x] = div.innerHTML;
-                }
-                else
-                    newLabels[x] = x.toString();
-            }
-            for (let x = 0; x < onScreenFaders.length; x++) {
-                let fader = onScreenFaders[x];
-                if (fader.type == 'dmx' &&
-                    newLabels[fader.number] != labels.dmx[fader.number]) {
-                    let labelElement = document.getElementById('label-dmx-' + fader.number);
-                    labelElement.innerHTML = newLabels[fader.number];
-                }
-            }
-            labels.dmx = newLabels;
-            break;
-        case 'fixtureValues':
-            init('fixtureValues');
-            // pad out or attenuate labels.fixture if this changes fixture number
-            if (msg.data.length != labels.fixture.length) {
-                let difference = msg.data.length - labels.fixture.length;
-                if (difference > 0) {
-                    labels.fixture.push(...new Array(difference).fill(''));
-                }
-                else {
-                    labels.fixture.splice(difference);
-                }
-            }
-            let valueArray = [];
-            for (let x = 0; x < msg.data.length; x++) {
-                let fixtureProperties = [...msg.data[x].dmx, ...msg.data[x].indirect];
-                valueArray[x] = -1;
-                let y = 0;
-                while (valueArray[x] == -1 && y < fixtureProperties.length) {
-                    if (fixtureProperties[y].property == 'value')
-                        valueArray[x] = fixtureProperties[y].value;
-                    y++;
-                }
-                if (valueArray[x] == -1) {
-                    console.error('Bad fixture data, fixture #' + x);
-                    valueArray[x] = 0;
-                }
-                let newValues = fixtureProperties.map((fp) => fp.value);
-                if (selectedFixture == x) {
-                    onValues(newValues, 'fixtureProperty');
-                    values.fixtureProperty = newValues;
-                }
-            }
-            //redraw if new number of fixtures, update otherwise
-            if (msg.data.length != values.fixture.length) {
-                values.fixture = valueArray;
-                reDrawFaders();
-            }
-            else {
-                onValues(valueArray, 'fixture');
-                values.fixture = valueArray;
-            }
-            break;
-        case 'fixtureLabels':
-            init('fixtureLabels');
-            // pad out or attenuate values.fixture if this changes fixture number
-            if (msg.data.length != values.fixture.length) {
-                let difference = msg.data.length - values.fixture.length;
-                if (difference > 0) {
-                    values.fixture.push(...new Array(difference).fill(0));
-                }
-                else {
-                    values.fixture.splice(difference);
-                }
-            }
-            //redraw if new number of fixtures, update otherwise
-            if (msg.data.length != labels.fixture.length) {
-                labels.fixture = msg.data;
-                reDrawFaders();
-            }
-            else {
-                for (let x = 0; x < onScreenFaders.length; x++) {
-                    let fader = onScreenFaders[x];
-                    if (fader.type == 'fixture' &&
-                        msg.data[fader.number] != labels.fixture[fader.number]) {
-                        let labelElement = document.getElementById('label-fixture-' + fader.number);
-                        labelElement.innerHTML = msg.data[fader.number];
-                    }
-                }
-                labels.fixture = msg.data;
-            }
-            break;
-        case 'fixtureProperties':
-            format = 'fixtureProperty';
-            selectedFixture = msg.data.fixture;
-            labels.fixtureProperty = [];
-            values.fixtureProperty = [];
-            selectedFixtureProperties = [];
-            for (let x = 0; x < msg.data.dmx.length; x++) {
-                let spn = document.createElement('span');
-                spn.style.color = 'green';
-                spn.innerHTML = msg.data.dmx[x].property;
-                labels.fixtureProperty.push(spn.outerHTML);
-                values.fixtureProperty.push(msg.data.dmx[x].value);
-                selectedFixtureProperties.push(msg.data.dmx[x].property);
-            }
-            for (let x = 0; x < msg.data.indirect.length; x++) {
-                labels.fixtureProperty.push(msg.data.indirect[x].property);
-                selectedFixtureProperties.push(msg.data.indirect[x].property);
-                values.fixtureProperty.push(msg.data.indirect[x].value);
-            }
-            reDrawFaders();
-            break;
         case 'info':
+            console.log(msg);
+            break;
+        case 'drawFaders':
+            drawFaders(msg.data);
             break;
         case 'error':
             console.error('Error from server: ' + msg.data);
@@ -365,53 +196,52 @@ function processDataFromServer(msg) {
             console.log(msg);
     }
 }
-function onValues(newValues, type) {
-    for (let x = 0; x < onScreenFaders.length; x++) {
-        let fader = onScreenFaders[x];
-        if (fader.type == type &&
-            newValues[fader.number] != values[type][fader.number]) {
-            let faderElement = document.getElementById('fader-' + type + '-' + fader.number);
-            let valElement = document.getElementById('val-' + type + '-' + fader.number);
-            if (document.activeElement != faderElement) {
-                faderElement.value = newValues[fader.number].toString();
-            }
-            if (document.activeElement != valElement)
-                valElement.value = Math.round(newValues[fader.number] * 255).toString();
-        }
+/* function onValues(newValues: number[], type: faderType) {
+  for (let x = 0; x < onScreenFaders.length; x++) {
+    let fader = onScreenFaders[x];
+    if (
+      fader.type == type &&
+      newValues[fader.number] != values[type][fader.number]
+    ) {
+      let faderElement = document.getElementById(
+        'fader-' + type + '-' + fader.number
+      ) as HTMLInputElement;
+      let valElement = document.getElementById(
+        'val-' + type + '-' + fader.number
+      ) as HTMLInputElement;
+      if (document.activeElement != faderElement) {
+        faderElement.value = newValues[fader.number].toString();
+      }
+      if (document.activeElement != valElement)
+        valElement.value = Math.round(newValues[fader.number] * 255).toString();
     }
-}
-function processInput(element, type, number, value) {
-    let valueName = 'value';
-    let faderId = 'fader-' + type + '-' + number.toString();
+  }
+} */
+function processInput(element) {
+    let [elementType, numString] = element.id.split('-');
+    let faderIndex = parseInt(numString);
+    let value = parseFloat(element.value);
+    let faderId = 'fader-' + faderIndex.toString();
     let fader = document.getElementById(faderId);
-    let valId = 'val-' + type + '-' + number.toString();
+    let valId = 'val-' + faderIndex.toString();
     let val = document.getElementById(valId);
-    let indexToServer = number;
-    let typeToServer = type;
-    if (type == 'fixtureProperty') {
-        valueName = selectedFixtureProperties[number];
-        indexToServer = selectedFixture;
-        typeToServer = 'fixture';
-    }
-    if ((!value && value != 0) || value < 0 || value > 1) {
+    let range = getFaderRange(faders[faderIndex].fader);
+    if ((!value && value != 0) || value < range.min || value > range.max) {
         resetElement(valId);
         console.error('bad input: ' + value);
     }
     else {
         sendToSocket({
             command: 'setValue',
-            type: typeToServer,
-            number: indexToServer,
+            index: faderIndex,
             value: value,
-            valueName: valueName,
         });
-        values[type][number] = value;
-        switch (element) {
+        switch (elementType) {
             case 'val':
                 fader.value = value.toString();
                 break;
             case 'fader':
-                val.value = Math.round(value * 255).toString();
+                val.value = (value).toString();
                 break;
             default:
                 console.error('bad element type');
@@ -419,13 +249,28 @@ function processInput(element, type, number, value) {
         }
     }
 }
+function getFaderRange(fader) {
+    switch (fader.type) {
+        case 'range':
+            let range = fader;
+            return { min: range.min, max: range.max, step: range.step };
+        case 'enum':
+            let enumf = fader;
+            return { min: 0, max: enumf.values.length - 1, step: 1 };
+        default:
+            console.error('Bad faders data in processInput');
+            return { min: -1, max: -1, step: -1 };
+    }
+}
 function resetElement(id) {
     let [element, type, numString] = id.split('-');
+    console.error('code resetElement');
+    return;
     let number = parseInt(numString);
     switch (element) {
         case 'val':
             let val = document.getElementById(id);
-            val.value = Math.round(values[type][number] * 255).toString();
+            //val.value = Math.round(values[type][number] * 255).toString();
             break;
         case 'fader':
             console.error('code me');
@@ -434,34 +279,6 @@ function resetElement(id) {
             console.error('code me');
             break;
     }
-}
-function init(completed) {
-    clearTimeout(initTimeout);
-    if (completed)
-        initialized[completed] = true;
-    if (!initialized.dmxValues) {
-        sendToSocket({ command: 'dmx' });
-    }
-    else if (!initialized.dmxLabels) {
-        sendToSocket({ command: 'dmxClaims' });
-    }
-    else if (!initialized.fixtureValues) {
-        sendToSocket({ command: 'fixtures' });
-    }
-    else if (!initialized.fixtureLabels) {
-        sendToSocket({ command: 'fixtureLabels' });
-    }
-    else
-        initialized.all = true;
-    if (!initialized.all)
-        initTimeout = setTimeout(() => {
-            initialized.retries++;
-            if (initialized.retries < 5) {
-                init();
-            }
-            else
-                console.error('Server poll timed out');
-        }, 100);
 }
 //testing code
 //let test = document.getElementById('test')!;

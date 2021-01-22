@@ -1,8 +1,7 @@
 'use strict';
-export {};
-/* import globalObj from './global'; */
-/* let {dmx} = require('./global') as {dmx: Dmx, fixtures: Fixture[]} */
-import { dmx } from './global'
+export { myWebSocket };
+import definitions from './fixtureDefinitions';
+import { dmx, fixtures } from './global';
 import * as api from './api';
 
 // todo: switch to a more minimal html server
@@ -10,14 +9,13 @@ import express from 'express';
 const app = express();
 import WebSocket from 'ws';
 
-
 class myWebSocket extends WebSocket {
   isAlive: boolean = true;
   ip: string = 'no ip given';
-  faders: fader[] = [];
-  redrawFadersJSON: {new: string, old: string} = {new: '', old: ''};
-  updateFadersJSON: {new: string, old: string} = {new: '', old: ''};
-  selectedFixtures: {type: faderType, number: number}[] = [];
+  faders: faderData[] = [];
+  redrawFadersJSON: { new: string; old: string } = { new: '', old: '' };
+  updateFadersJSON: { new: string; old: string } = { new: '', old: '' };
+  selectedFixtures: { type: faderType; number: number }[] = [];
   dmxValuesUpdate?: (dmxValues: number[]) => void;
 }
 
@@ -37,19 +35,20 @@ wss.on('connection', (ws: myWebSocket, req) => {
     ws.isAlive = true;
   });
   ws.on('message', (msg: string) => {
-    let clientMsg: clientMsg
+    let clientMsg: clientMsg;
     try {
-      clientMsg = JSON.parse(msg)
-      ws.send(JSON.stringify(api.processApiCmd(clientMsg)));
+      clientMsg = JSON.parse(msg);
+      ws.send(JSON.stringify(api.processApiCmd(clientMsg, ws)));
     } catch (e) {
       console.error('Bad JSON from ' + ws.ip);
-      console.log(msg)
-      console.log(e)
+      console.log(msg);
+      console.log(e);
     }
   });
+  ws.faders = faderInit('fixture');
   ws.dmxValuesUpdate = (dmxValues) => {
-    ws.send(JSON.stringify(api.processDmxValuesUpdate(dmxValues)));
-    ws.send(JSON.stringify(api.processApiCmd({command: 'fixtures'})));
+    /* ws.send(JSON.stringify(api.processDmxValuesUpdate(dmxValues)));
+    ws.send(JSON.stringify(api.processApiCmd({command: 'fixtures'}))); */
   };
   dmx!.on('change', ws.dmxValuesUpdate);
   ws.on('close', () => {
@@ -80,3 +79,48 @@ const beatInterval = setInterval(() => {
 wss.on('close', () => {
   clearInterval(beatInterval);
 });
+
+function faderInit(
+  type: faderType
+): faderData[] {
+  let rtn: faderData[] = [];
+  switch (type) {
+    case 'dmx':
+      break;
+    case 'fixture':
+      for (let x = 0; x < fixtures.all.length; x++) {
+        let fader: fader | undefined = undefined;
+        for (let y = 0; y < definitions[fixtures.all[x].type].dmx.length; y++) {
+          if (definitions[fixtures.all[x].type].dmx[y].subLabel1 == 'value') {
+            fader = JSON.parse(JSON.stringify(definitions[fixtures.all[x].type].dmx[y])) as fader;
+            delete fader.subLabel1;
+          }
+        }
+        if (!fader && definitions[fixtures.all[x].type].indirect) {
+          for (
+            let y = 0;
+            y < definitions[fixtures.all[x].type].indirect!.properties.length;
+            y++
+          ) {
+            if (
+              definitions[fixtures.all[x].type].indirect!.properties[y]
+                .subLabel1 == 'value'
+            ) {
+              fader = JSON.parse(JSON.stringify(definitions[fixtures.all[x].type].indirect!.properties[y])) as fader;
+              delete fader.subLabel1;
+            }
+          }
+        }
+        if (fader == undefined) fader = {type: 'empty'};
+        rtn.push({
+          fader: fader,
+          value: fixtures.all[x].getValue('value'),
+          label: fixtures.all[x].label,
+        });
+      }
+      break;
+    case 'fixtureProperty':
+      break;
+  }
+  return rtn;
+}

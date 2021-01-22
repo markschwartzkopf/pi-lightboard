@@ -22,10 +22,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-/* import globalObj from './global'; */
-/* let {dmx} = require('./global') as {dmx: Dmx, fixtures: Fixture[]} */
+exports.myWebSocket = void 0;
+const fixtureDefinitions_1 = __importDefault(require("./fixtureDefinitions"));
 const global_1 = require("./global");
 const api = __importStar(require("./api"));
+// todo: switch to a more minimal html server
 const express_1 = __importDefault(require("express"));
 const app = express_1.default();
 const ws_1 = __importDefault(require("ws"));
@@ -40,6 +41,7 @@ class myWebSocket extends ws_1.default {
         this.selectedFixtures = [];
     }
 }
+exports.myWebSocket = myWebSocket;
 app.use(express_1.default.static(__dirname + '/../public', { index: 'index.html' }));
 const server = app.listen(80, () => console.log('Listening on port 80.'));
 const wss = new ws_1.default.Server({ server });
@@ -56,18 +58,18 @@ wss.on('connection', (ws, req) => {
         let clientMsg;
         try {
             clientMsg = JSON.parse(msg);
+            ws.send(JSON.stringify(api.processApiCmd(clientMsg, ws)));
         }
         catch (e) {
             console.error('Bad JSON from ' + ws.ip);
             console.log(msg);
             console.log(e);
         }
-        if (clientMsg)
-            ws.send(JSON.stringify(api.processApiCmd(clientMsg)));
     });
+    ws.faders = faderInit('fixture');
     ws.dmxValuesUpdate = (dmxValues) => {
-        ws.send(JSON.stringify(api.processDmxValuesUpdate(dmxValues)));
-        ws.send(JSON.stringify(api.processApiCmd({ command: 'fixtures' })));
+        /* ws.send(JSON.stringify(api.processDmxValuesUpdate(dmxValues)));
+        ws.send(JSON.stringify(api.processApiCmd({command: 'fixtures'}))); */
     };
     global_1.dmx.on('change', ws.dmxValuesUpdate);
     ws.on('close', () => {
@@ -85,7 +87,7 @@ const beatInterval = setInterval(() => {
         ws.ping();
     });
 }, 30000);
-/* globalObj.connectedClients = () => {
+/* connectedClients = () => {
   let clients: string[] = [];
   wss.clients.forEach((ws) => {
     clients.push((<myWebSocket>ws).ip);
@@ -95,3 +97,40 @@ const beatInterval = setInterval(() => {
 wss.on('close', () => {
     clearInterval(beatInterval);
 });
+function faderInit(type) {
+    let rtn = [];
+    switch (type) {
+        case 'dmx':
+            break;
+        case 'fixture':
+            for (let x = 0; x < global_1.fixtures.all.length; x++) {
+                let fader = undefined;
+                for (let y = 0; y < fixtureDefinitions_1.default[global_1.fixtures.all[x].type].dmx.length; y++) {
+                    if (fixtureDefinitions_1.default[global_1.fixtures.all[x].type].dmx[y].subLabel1 == 'value') {
+                        fader = JSON.parse(JSON.stringify(fixtureDefinitions_1.default[global_1.fixtures.all[x].type].dmx[y]));
+                        delete fader.subLabel1;
+                    }
+                }
+                if (!fader && fixtureDefinitions_1.default[global_1.fixtures.all[x].type].indirect) {
+                    for (let y = 0; y < fixtureDefinitions_1.default[global_1.fixtures.all[x].type].indirect.properties.length; y++) {
+                        if (fixtureDefinitions_1.default[global_1.fixtures.all[x].type].indirect.properties[y]
+                            .subLabel1 == 'value') {
+                            fader = JSON.parse(JSON.stringify(fixtureDefinitions_1.default[global_1.fixtures.all[x].type].indirect.properties[y]));
+                            delete fader.subLabel1;
+                        }
+                    }
+                }
+                if (fader == undefined)
+                    fader = { type: 'empty' };
+                rtn.push({
+                    fader: fader,
+                    value: global_1.fixtures.all[x].getValue('value'),
+                    label: global_1.fixtures.all[x].label,
+                });
+            }
+            break;
+        case 'fixtureProperty':
+            break;
+    }
+    return rtn;
+}

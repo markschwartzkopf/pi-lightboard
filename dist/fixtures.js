@@ -52,50 +52,48 @@ class Fixture extends events_1.EventEmitter {
     }
     getValue(valueName) {
         if (!valueName) {
-            let rtn = { fixture: -1, dmx: [], indirect: [] };
+            let rtn = [];
             for (let x = 0; x < fixtureDefinitions_1.default[this.type].dmx.length; x++) {
-                rtn.dmx.push({
-                    property: fixtureDefinitions_1.default[this.type].dmx[x],
-                    value: this.getValue(fixtureDefinitions_1.default[this.type].dmx[x]),
-                });
+                rtn.push(this.getValue(fixtureDefinitions_1.default[this.type].dmx[x].subLabel1));
             }
             if (fixtureDefinitions_1.default[this.type].indirect) {
-                for (let x = 0; x < fixtureDefinitions_1.default[this.type].indirect.names.length; x++) {
-                    rtn.indirect.push({
-                        property: fixtureDefinitions_1.default[this.type].indirect.names[x],
-                        value: this.getValue(fixtureDefinitions_1.default[this.type].indirect.names[x]),
-                    });
+                for (let x = 0; x < fixtureDefinitions_1.default[this.type].indirect.properties.length; x++) {
+                    rtn.push(this.getValue(fixtureDefinitions_1.default[this.type].indirect.properties[x].subLabel1));
                 }
             }
             return rtn;
         }
-        let dmxIndex = fixtureDefinitions_1.default[this.type].dmx.indexOf(valueName);
-        if (valueName && dmxIndex != -1) {
-            return this._universe.getValue(__classPrivateFieldGet(this, _dmxChannels)[dmxIndex]);
+        for (let x = 0; x < fixtureDefinitions_1.default[this.type].dmx.length; x++) {
+            if (valueName == fixtureDefinitions_1.default[this.type].dmx[x].subLabel1)
+                return this._universe.getValue(__classPrivateFieldGet(this, _dmxChannels)[x]);
         }
         if (fixtureDefinitions_1.default[this.type].indirect) {
-            let indirectIndex = fixtureDefinitions_1.default[this.type].indirect.names.indexOf(valueName);
-            let dmxArray = __classPrivateFieldGet(this, _dmxChannels).map((n) => this._universe.getValue(n));
-            if (indirectIndex != -1)
-                return fixtureDefinitions_1.default[this.type].indirect.get(dmxArray, valueName);
+            for (let x = 0; x < fixtureDefinitions_1.default[this.type].indirect.properties.length; x++) {
+                if (valueName == fixtureDefinitions_1.default[this.type].indirect.properties[x].subLabel1) {
+                    let dmxArray = __classPrivateFieldGet(this, _dmxChannels).map((n) => this._universe.getValue(n));
+                    return fixtureDefinitions_1.default[this.type].indirect.get(dmxArray, valueName);
+                }
+            }
         }
+        console.error('fixture.getValue error for: ' + valueName);
         return 0;
     }
     setValue(newVal, valueName) {
         if (!valueName)
             valueName = 'value';
-        let dmxIndex = fixtureDefinitions_1.default[this.type].dmx.indexOf(valueName);
-        if (valueName && dmxIndex != -1) {
-            this._universe.setValues([__classPrivateFieldGet(this, _dmxChannels)[dmxIndex]], [newVal]);
+        for (let x = 0; x < fixtureDefinitions_1.default[this.type].dmx.length; x++) {
+            if (valueName == fixtureDefinitions_1.default[this.type].dmx[x].subLabel1)
+                this._universe.setValues([__classPrivateFieldGet(this, _dmxChannels)[x]], [newVal]);
             return;
         }
         if (fixtureDefinitions_1.default[this.type].indirect) {
-            let indirectIndex = fixtureDefinitions_1.default[this.type].indirect.names.indexOf(valueName);
-            let dmxArray = __classPrivateFieldGet(this, _dmxChannels).map((n) => this._universe.getValue(n));
-            let dmxIndex = __classPrivateFieldGet(this, _dmxChannels);
-            if (indirectIndex != -1) {
-                this._universe.setValues(dmxIndex, fixtureDefinitions_1.default[this.type].indirect.set(dmxArray, valueName, newVal));
-                return;
+            for (let x = 0; x < fixtureDefinitions_1.default[this.type].indirect.properties.length; x++) {
+                if (valueName == fixtureDefinitions_1.default[this.type].indirect.properties[x].subLabel1) {
+                    let dmxArray = __classPrivateFieldGet(this, _dmxChannels).map((n) => this._universe.getValue(n));
+                    let dmxIndex = __classPrivateFieldGet(this, _dmxChannels);
+                    this._universe.setValues(dmxIndex, fixtureDefinitions_1.default[this.type].indirect.set(dmxArray, valueName, newVal));
+                    return;
+                }
             }
         }
         console.error('No such property ' + valueName + ' on fixture');

@@ -70,9 +70,9 @@
 
   position: relative;
   cursor: crosshair;
-  background: linear-gradient(rgba(255, 255, 255, 0), var(--color-full)),
-    linear-gradient(
-      to right,
+  border-radius: 100%;
+  background: radial-gradient(closest-side, var(--color-full), rgba(255, 255, 255, 0)),
+    conic-gradient(
       var(--color1),
       var(--color15),
       var(--color2),
