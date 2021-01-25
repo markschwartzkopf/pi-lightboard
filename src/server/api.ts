@@ -9,7 +9,7 @@ function processApiCmd(msg: clientMsg, ws: myWebSocket): serverMsg {
     case 'init':
       return {
         type: 'drawFaders',
-        data: ws.faders,
+        data: ws.clientFaders,
       };
       break;
     

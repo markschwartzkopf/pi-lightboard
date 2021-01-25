@@ -6,7 +6,7 @@ function processApiCmd(msg, ws) {
         case 'init':
             return {
                 type: 'drawFaders',
-                data: ws.faders,
+                data: ws.clientFaders,
             };
             break;
         case 'setValue':

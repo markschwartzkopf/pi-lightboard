@@ -98,6 +98,26 @@ class Fixture extends events_1.EventEmitter {
         }
         console.error('No such property ' + valueName + ' on fixture');
     }
+    get fader() {
+        let rtnFader = undefined;
+        for (let x = 0; x < fixtureDefinitions_1.default[this.type].dmx.length; x++) {
+            if (fixtureDefinitions_1.default[this.type].dmx[x].subLabel1 == 'value') {
+                rtnFader = JSON.parse(JSON.stringify(fixtureDefinitions_1.default[this.type].dmx[x]));
+                delete rtnFader.subLabel1;
+            }
+        }
+        if (!rtnFader && fixtureDefinitions_1.default[this.type].indirect) {
+            for (let x = 0; x < fixtureDefinitions_1.default[this.type].indirect.properties.length; x++) {
+                if (fixtureDefinitions_1.default[this.type].indirect.properties[x].subLabel1 == 'value') {
+                    rtnFader = JSON.parse(JSON.stringify(fixtureDefinitions_1.default[this.type].indirect.properties[x]));
+                    delete rtnFader.subLabel1;
+                }
+            }
+        }
+        if (rtnFader == undefined)
+            rtnFader = { type: 'empty' };
+        return rtnFader;
+    }
     static validateDmxArray(arr, universe) {
         let valid = true;
         if (Array.isArray(arr)) {

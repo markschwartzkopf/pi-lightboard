@@ -125,6 +125,36 @@ class Fixture extends EventEmitter {
     console.error('No such property ' + valueName + ' on fixture');
   }
 
+  get fader(): fader {
+    let rtnFader: fader | undefined = undefined;
+    for (let x = 0; x < definitions[this.type].dmx.length; x++) {
+      if (definitions[this.type].dmx[x].subLabel1 == 'value') {
+        rtnFader = JSON.parse(
+          JSON.stringify(definitions[this.type].dmx[x])
+        ) as fader;
+        delete rtnFader.subLabel1;
+      }
+    }
+    if (!rtnFader && definitions[this.type].indirect) {
+      for (
+        let x = 0;
+        x < definitions[this.type].indirect!.properties.length;
+        x++
+      ) {
+        if (
+          definitions[this.type].indirect!.properties[x].subLabel1 == 'value'
+        ) {
+          rtnFader = JSON.parse(
+            JSON.stringify(definitions[this.type].indirect!.properties[x])
+          ) as fader;
+          delete rtnFader.subLabel1;
+        }
+      }
+    }
+    if (rtnFader == undefined) rtnFader = { type: 'empty' };
+    return rtnFader;
+  }
+
   static validateDmxArray(arr: any[], universe?: Dmx) {
     let valid = true;
     if (Array.isArray(arr)) {

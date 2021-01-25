@@ -13,6 +13,7 @@ type serverMsg =
   | { type: 'updateSelected'; data: any };
 
 type faderData = { fader: fader, value: number, label: string}
+type fader = rangeFader | enumFader | emptyFader;
 
 type rangeFader = {
   type: 'range';
@@ -36,7 +37,6 @@ type emptyFader = {
 }
 
 
-type fader = rangeFader | enumFader | emptyFader;
 
 type clientMsg =
   | { command: 'init' }

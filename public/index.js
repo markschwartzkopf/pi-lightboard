@@ -182,6 +182,7 @@ function flash(div, off) {
     div.style.backgroundColor = bgcolor;
 }
 function processDataFromServer(msg) {
+    console.log(msg);
     switch (msg.type) {
         case 'info':
             console.log(msg);

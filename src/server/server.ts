@@ -9,14 +9,15 @@ import express from 'express';
 const app = express();
 import WebSocket from 'ws';
 
-class myWebSocket extends WebSocket {
-  isAlive: boolean = true;
-  ip: string = 'no ip given';
-  faders: faderData[] = [];
-  redrawFadersJSON: { new: string; old: string } = { new: '', old: '' };
-  updateFadersJSON: { new: string; old: string } = { new: '', old: '' };
-  selectedFixtures: { type: faderType; number: number }[] = [];
+interface myWebSocket extends WebSocket {
+  isAlive: boolean;
+  ip: string;
+  _faders: serverFader[];
+  redrawFadersJSON: { new: string; old: string };
+  updateFadersJSON: { new: string; old: string };
+  selectedFixtures: { type: faderType; number: number }[];
   dmxValuesUpdate?: (dmxValues: number[]) => void;
+  readonly clientFaders: faderData[];
 }
 
 app.use(express.static(__dirname + '/../public', { index: 'index.html' }));
@@ -26,6 +27,37 @@ const server = app.listen(80, () => console.log('Listening on port 80.'));
 const wss = new WebSocket.Server({ server });
 
 wss.on('connection', (ws: myWebSocket, req) => {
+  //first implement myWebSocket interface... there has to be a better way to do this and have TypeScript allow properties to be added to ws
+  ws.isAlive = true;
+  ws.ip = 'no ip given';
+  ws._faders = [];
+  ws.redrawFadersJSON = { new: '', old: '' };
+  ws.updateFadersJSON = { new: '', old: '' };
+  ws.selectedFixtures = [];
+  Object.defineProperty(ws, 'clientFaders', {
+    get: (): faderData[] => {
+      return ws._faders.map(
+        (x): faderData => {
+          switch (x.type) {
+            case 'dmx':
+              console.error('code dmx clientFader');
+              return { fader: { type: 'empty' }, value: 0, label: '' };
+              break;
+            case 'fixture':
+              return {
+                fader: x.fixture.fader,
+                value: x.fixture.getValue('value'),
+                label: x.fixture.label,
+              } as faderData;
+              break;
+            case 'empty':
+              console.error('code empty clientFader');
+              return { fader: { type: 'empty' }, value: 0, label: '' };
+          }
+        }
+      );
+    },
+  });
   if (req.socket.remoteAddress) {
     ws.ip = req.socket.remoteAddress.replace(/^.*:/, '');
   }
@@ -45,7 +77,7 @@ wss.on('connection', (ws: myWebSocket, req) => {
       console.log(e);
     }
   });
-  ws.faders = faderInit('fixture');
+  ws._faders = faderInit('fixture');
   ws.dmxValuesUpdate = (dmxValues) => {
     /* ws.send(JSON.stringify(api.processDmxValuesUpdate(dmxValues)));
     ws.send(JSON.stringify(api.processApiCmd({command: 'fixtures'}))); */
@@ -80,46 +112,19 @@ wss.on('close', () => {
   clearInterval(beatInterval);
 });
 
-function faderInit(
-  type: faderType
-): faderData[] {
-  let rtn: faderData[] = [];
+function faderInit(type: faderType): serverFader[] {
+  let rtn: serverFader[] = [];
   switch (type) {
     case 'dmx':
+      console.error('code dmx serverFader init');
       break;
     case 'fixture':
-      for (let x = 0; x < fixtures.all.length; x++) {
-        let fader: fader | undefined = undefined;
-        for (let y = 0; y < definitions[fixtures.all[x].type].dmx.length; y++) {
-          if (definitions[fixtures.all[x].type].dmx[y].subLabel1 == 'value') {
-            fader = JSON.parse(JSON.stringify(definitions[fixtures.all[x].type].dmx[y])) as fader;
-            delete fader.subLabel1;
-          }
-        }
-        if (!fader && definitions[fixtures.all[x].type].indirect) {
-          for (
-            let y = 0;
-            y < definitions[fixtures.all[x].type].indirect!.properties.length;
-            y++
-          ) {
-            if (
-              definitions[fixtures.all[x].type].indirect!.properties[y]
-                .subLabel1 == 'value'
-            ) {
-              fader = JSON.parse(JSON.stringify(definitions[fixtures.all[x].type].indirect!.properties[y])) as fader;
-              delete fader.subLabel1;
-            }
-          }
-        }
-        if (fader == undefined) fader = {type: 'empty'};
-        rtn.push({
-          fader: fader,
-          value: fixtures.all[x].getValue('value'),
-          label: fixtures.all[x].label,
-        });
-      }
+      rtn = fixtures.all.map(
+        (x): serverFader => ({ type: 'fixture', fixture: x })
+      );
       break;
     case 'fixtureProperty':
+      console.error('code fixtureProperty serverFader init');
       break;
   }
   return rtn;

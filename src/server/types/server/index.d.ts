@@ -2,6 +2,9 @@ type fixtureInit = { label: string; type: fixtureType; dmx: number[] };
 
 type dmxClaim = { fixture: number; type: channelType };
 
+type serverFader = {type: 'fixture', fixture: import('../../fixtures').default} | {type: 'dmx'} | {type: 'empty'};
+
+
 /* type fader =
   | { type: 'fixture'; fixture: import('../fixtures').default; apiFader: rangeFader | enumFader }
   | { type: 'dmx'; number: number; apiFader: rangeFader | enumFader}
