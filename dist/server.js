@@ -32,7 +32,7 @@ app.use(express_1.default.static(__dirname + '/../public', { index: 'index.html'
 const server = app.listen(80, () => console.log('Listening on port 80.'));
 const wss = new ws_1.default.Server({ server });
 wss.on('connection', (ws, req) => {
-    //implement myWebSocket interface:
+    //first implement myWebSocket interface... there has to be a better way to do this and have TypeScript allow properties to be added to ws
     ws.isAlive = true;
     ws.ip = 'no ip given';
     ws._faders = [];
@@ -48,14 +48,18 @@ wss.on('connection', (ws, req) => {
                         return { fader: { type: 'empty' }, value: 0, label: '' };
                         break;
                     case 'fixture':
-                        return { fader: x.fixture.fader, value: x.fixture.getValue('value'), label: x.fixture.label };
+                        return {
+                            fader: x.fixture.fader,
+                            value: x.fixture.getValue('value'),
+                            label: x.fixture.label,
+                        };
                         break;
                     case 'empty':
                         console.error('code empty clientFader');
                         return { fader: { type: 'empty' }, value: 0, label: '' };
                 }
             });
-        }
+        },
     });
     if (req.socket.remoteAddress) {
         ws.ip = req.socket.remoteAddress.replace(/^.*:/, '');
