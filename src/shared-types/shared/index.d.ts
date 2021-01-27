@@ -1,18 +1,15 @@
 type faderType = 'dmx' | 'fixture' | 'fixtureProperty';
 
 type serverMsg =
-  | { type: 'dmxValues'; data: number[] }
-  | { type: 'fixtureValues'; data: fixtureProperties[] }
-  | { type: 'fixtureLabels'; data: string[] }
-  | { type: 'fixtureProperties'; data: fixtureProperties }
   | { type: 'error'; data: string }
   | { type: 'info'; data: string }
   | { type: 'drawFaders'; data: faderData[] }
-  | { type: 'updateFaders'; data: number[] }
+  | { type: 'updateFaders'; data: faderUpdate[] }
   | { type: 'drawSelected'; data: any }
   | { type: 'updateSelected'; data: any };
 
-type faderData = { fader: fader, value: number, label: string}
+type faderUpdate = { index: number; value: number };
+type faderData = { fader: fader; value: number; label: string };
 type fader = rangeFader | enumFader | emptyFader;
 
 type rangeFader = {
@@ -34,9 +31,7 @@ type emptyFader = {
   type: 'empty';
   subLabel1?: string;
   subLabel2?: string;
-}
-
-
+};
 
 type clientMsg =
   | { command: 'init' }
@@ -46,14 +41,17 @@ type clientMsg =
       value: number;
     }
   | {
+      command: 'setFaderBank';
+      bank: faderBank;
+    }
+  | {
       command: 'select';
       number: number;
       operation: 'selected' | 'deselected' | 'toggle';
       reset: boolean;
-    }
-  | { command: 'display'; type: displayType };
+    };
 
-type displayType = 'dmx' | 'fixtures' | 'groups' | number;
+type faderBank = 'dmx' | 'fixtures' | 'groups' | number;
 
 type lightboardUpdate =
   | { type: 'dmxNames'; data: string[] }

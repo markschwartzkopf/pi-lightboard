@@ -39,13 +39,27 @@ wss.on('connection', (ws, req) => {
     ws.redrawFadersJSON = { new: '', old: '' };
     ws.updateFadersJSON = { new: '', old: '' };
     ws.selectedFixtures = [];
+    ws.setValue = (index, value) => {
+        setValue(index, value, ws._faders);
+    };
+    ws.faderInit = (x) => { ws._faders = faderInit(x); };
     Object.defineProperty(ws, 'clientFaders', {
         get: () => {
             return ws._faders.map((x) => {
                 switch (x.type) {
                     case 'dmx':
-                        console.error('code dmx clientFader');
-                        return { fader: { type: 'empty' }, value: 0, label: '' };
+                        let xDmx = x;
+                        return {
+                            fader: {
+                                type: 'range',
+                                min: 0,
+                                max: 255,
+                                step: 1,
+                                loop: false,
+                            },
+                            value: global_1.dmx.getValue(xDmx.index),
+                            label: xDmx.index.toString(),
+                        };
                         break;
                     case 'fixture':
                         return {
@@ -81,10 +95,21 @@ wss.on('connection', (ws, req) => {
             console.log(e);
         }
     });
-    ws._faders = faderInit('fixture');
-    ws.dmxValuesUpdate = (dmxValues) => {
-        /* ws.send(JSON.stringify(api.processDmxValuesUpdate(dmxValues)));
-        ws.send(JSON.stringify(api.processApiCmd({command: 'fixtures'}))); */
+    ws._faders = faderInit('dmx');
+    ws.dmxValuesUpdate = (changes) => {
+        let updates = [];
+        for (let x = 0; x < changes.length; x++) {
+            for (let y = 0; y < ws._faders.length; y++) {
+                let fader = ws._faders[y];
+                if (ws._faders[y].type == 'dmx' && fader.index == changes[x].channel) {
+                    updates.push({ index: y, value: changes[x].value });
+                }
+            }
+        }
+        if (updates.length > 0) {
+            let updateMsg = { type: 'updateFaders', data: updates };
+            ws.send(JSON.stringify(updateMsg));
+        }
     };
     global_1.dmx.on('change', ws.dmxValuesUpdate);
     ws.on('close', () => {
@@ -116,14 +141,29 @@ function faderInit(type) {
     let rtn = [];
     switch (type) {
         case 'dmx':
-            console.error('code dmx serverFader init');
+            rtn = global_1.dmx.getValue().slice(1).map((x, index) => ({ type: 'dmx', index: index + 1 })); //slice(1) and +1 offset
             break;
-        case 'fixture':
+        case 'fixtures':
             rtn = global_1.fixtures.all.map((x) => ({ type: 'fixture', fixture: x }));
             break;
-        case 'fixtureProperty':
-            console.error('code fixtureProperty serverFader init');
+        default:
+            console.error('code serverFader init type: ' + type);
             break;
     }
     return rtn;
+}
+function setValue(index, value, faders) {
+    switch (faders[index].type) {
+        case 'dmx':
+            let dmxFader = faders[index];
+            global_1.dmx.setValues([{ channel: dmxFader.index, value: value }]);
+            break;
+        case 'fixture':
+            let fixtureFader = faders[index];
+            fixtureFader.fixture.setValue(value);
+            break;
+        case 'empty':
+            console.error('Cannot setValue for empty faders');
+            break;
+    }
 }

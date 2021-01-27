@@ -42,38 +42,11 @@ function sendToSocket(msg) {
     socket.send(JSON.stringify(msg));
 }
 dmxButton.onclick = () => {
-    /* format = 'dmx';
-    reDrawFaders(); */
+    sendToSocket({ command: 'setFaderBank', bank: 'dmx' });
 };
 fixturesButton.onclick = () => {
-    /*  format = 'fixture';
-    reDrawFaders(); */
+    sendToSocket({ command: 'setFaderBank', bank: 'fixtures' });
 };
-/* reDrawFaders(); */
-/* function reDrawFaders() {
-  let faderType: faderType;
-  switch (format) {
-    case 'dmx':
-      selectedFixture = -1;
-      faderType = 'dmx';
-      dmxButton.style.backgroundColor = 'yellow';
-      fixturesButton.style.backgroundColor = '';
-      dmxButton.blur();
-      break;
-    case 'fixture':
-      selectedFixture = -1;
-      faderType = 'fixture';
-      dmxButton.style.backgroundColor = '';
-      fixturesButton.style.backgroundColor = 'yellow';
-      fixturesButton.blur();
-      break;
-    case 'fixtureProperty':
-      faderType = 'fixtureProperty';
-      break;
-    default:
-  }
-  drawFaders(values[format], labels[format], format);
-} */
 function drawFaders(newFaders) {
     faders = newFaders;
     let grd = document.getElementById('grd');
@@ -188,7 +161,21 @@ function processDataFromServer(msg) {
             console.log(msg);
             break;
         case 'drawFaders':
+            faders = msg.data;
             drawFaders(msg.data);
+            break;
+        case 'updateFaders':
+            for (let x = 0; x < msg.data.length; x++) {
+                faders[msg.data[x].index].value = msg.data[x].value;
+                let faderElement = document.getElementById('fader-' + msg.data[x].index);
+                let valElement = document.getElementById('val-' + msg.data[x].index);
+                if (document.activeElement != faderElement) {
+                    faderElement.value = msg.data[x].value.toString();
+                }
+                if (document.activeElement != valElement) {
+                    valElement.value = msg.data[x].value.toString(); //fix this for enums
+                }
+            }
             break;
         case 'error':
             console.error('Error from server: ' + msg.data);
@@ -221,7 +208,7 @@ function processDataFromServer(msg) {
 function processInput(element) {
     let [elementType, numString] = element.id.split('-');
     let faderIndex = parseInt(numString);
-    let value = parseFloat(element.value);
+    let value = parseFloat(element.value); //unless enum
     let faderId = 'fader-' + faderIndex.toString();
     let fader = document.getElementById(faderId);
     let valId = 'val-' + faderIndex.toString();
@@ -242,7 +229,7 @@ function processInput(element) {
                 fader.value = value.toString();
                 break;
             case 'fader':
-                val.value = (value).toString();
+                val.value = value.toString();
                 break;
             default:
                 console.error('bad element type');

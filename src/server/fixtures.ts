@@ -95,11 +95,13 @@ class Fixture extends EventEmitter {
 
   setValue(newVal: number, valueName?: string) {
     if (!valueName) valueName = 'value';
-
     for (let x = 0; x < definitions[this.type].dmx.length; x++) {
-      if (valueName == definitions[this.type].dmx[x].subLabel1!)
-        this._universe.setValues([this.#dmxChannels[x]], [newVal]);
-      return;
+      if (valueName == definitions[this.type].dmx[x].subLabel1!) {
+        this._universe.setValues([
+          { channel: this.#dmxChannels[x], value: newVal },
+        ]);
+        return;
+      }
     }
     if (definitions[this.type].indirect) {
       for (
@@ -115,8 +117,9 @@ class Fixture extends EventEmitter {
           );
           let dmxIndex = this.#dmxChannels;
           this._universe.setValues(
-            dmxIndex,
-            definitions[this.type].indirect!.set(dmxArray, valueName, newVal)
+            definitions[this.type]
+              .indirect!.set(dmxArray, valueName, newVal)
+              .map((val, index) => ({ channel: dmxIndex[index], value: val }))
           );
           return;
         }

@@ -1,6 +1,6 @@
 'use strict';
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.processDmxValuesUpdate = exports.processApiCmd = void 0;
+exports.processApiCmd = void 0;
 function processApiCmd(msg, ws) {
     switch (msg.command) {
         case 'init':
@@ -10,17 +10,17 @@ function processApiCmd(msg, ws) {
             };
             break;
         case 'setValue':
-            /* switch (msg.type) {
-              case 'dmx':
-                dmx.setValues([msg.number], [msg.value]);
-                break;
-              case 'fixture':
-                fixtures.all[msg.number].setValue(msg.value, msg.valueName);
-                break;
-            } */
+            ws.setValue(msg.index, msg.value);
             return {
                 type: 'info',
                 data: 'Command acknowleged',
+            };
+            break;
+        case 'setFaderBank':
+            ws.faderInit(msg.bank);
+            return {
+                type: 'drawFaders',
+                data: ws.clientFaders,
             };
             break;
         default:
@@ -32,7 +32,3 @@ function processApiCmd(msg, ws) {
     }
 }
 exports.processApiCmd = processApiCmd;
-function processDmxValuesUpdate(dmxValues) {
-    return { type: 'dmxValues', data: dmxValues };
-}
-exports.processDmxValuesUpdate = processDmxValuesUpdate;

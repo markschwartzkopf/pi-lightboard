@@ -82,16 +82,29 @@ class Fixture extends events_1.EventEmitter {
         if (!valueName)
             valueName = 'value';
         for (let x = 0; x < fixtureDefinitions_1.default[this.type].dmx.length; x++) {
-            if (valueName == fixtureDefinitions_1.default[this.type].dmx[x].subLabel1)
-                this._universe.setValues([__classPrivateFieldGet(this, _dmxChannels)[x]], [newVal]);
-            return;
+            if (valueName == fixtureDefinitions_1.default[this.type].dmx[x].subLabel1) {
+                this._universe.setValues([
+                    { channel: __classPrivateFieldGet(this, _dmxChannels)[x], value: newVal },
+                ]);
+                return;
+            }
         }
         if (fixtureDefinitions_1.default[this.type].indirect) {
             for (let x = 0; x < fixtureDefinitions_1.default[this.type].indirect.properties.length; x++) {
+                console.log('indirect ' +
+                    fixtureDefinitions_1.default[this.type].indirect.properties[x].subLabel1 +
+                    ' compareed to ' +
+                    valueName);
                 if (valueName == fixtureDefinitions_1.default[this.type].indirect.properties[x].subLabel1) {
+                    console.log(newVal);
                     let dmxArray = __classPrivateFieldGet(this, _dmxChannels).map((n) => this._universe.getValue(n));
                     let dmxIndex = __classPrivateFieldGet(this, _dmxChannels);
-                    this._universe.setValues(dmxIndex, fixtureDefinitions_1.default[this.type].indirect.set(dmxArray, valueName, newVal));
+                    console.log(fixtureDefinitions_1.default[this.type]
+                        .indirect.set(dmxArray, valueName, newVal)
+                        .map((val, index) => ({ channel: dmxIndex[index], value: val })));
+                    this._universe.setValues(fixtureDefinitions_1.default[this.type]
+                        .indirect.set(dmxArray, valueName, newVal)
+                        .map((val, index) => ({ channel: dmxIndex[index], value: val })));
                     return;
                 }
             }

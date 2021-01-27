@@ -1,5 +1,5 @@
 'use strict';
-export { processApiCmd, processDmxValuesUpdate };
+export { processApiCmd };
 import { dmx, fixtures } from './global';
 import Fixture from './fixtures';
 import { myWebSocket } from './server';
@@ -12,19 +12,18 @@ function processApiCmd(msg: clientMsg, ws: myWebSocket): serverMsg {
         data: ws.clientFaders,
       };
       break;
-    
     case 'setValue':
-      /* switch (msg.type) {
-        case 'dmx':
-          dmx.setValues([msg.number], [msg.value]);
-          break;
-        case 'fixture':
-          fixtures.all[msg.number].setValue(msg.value, msg.valueName);
-          break;
-      } */
+      ws.setValue(msg.index, msg.value);
       return {
         type: 'info',
         data: 'Command acknowleged',
+      };
+      break;
+    case 'setFaderBank':
+      ws.faderInit(msg.bank);
+      return {
+        type: 'drawFaders',
+        data: ws.clientFaders,
       };
       break;
     default:
@@ -34,8 +33,4 @@ function processApiCmd(msg: clientMsg, ws: myWebSocket): serverMsg {
         data: 'Invalid command received',
       };
   }
-}
-
-function processDmxValuesUpdate(dmxValues: number[]): serverMsg {
-  return { type: 'dmxValues', data: dmxValues };
 }

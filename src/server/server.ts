@@ -16,8 +16,10 @@ interface myWebSocket extends WebSocket {
   redrawFadersJSON: { new: string; old: string };
   updateFadersJSON: { new: string; old: string };
   selectedFixtures: { type: faderType; number: number }[];
-  dmxValuesUpdate?: (dmxValues: number[]) => void;
+  dmxValuesUpdate?: (changes: dmxChange[]) => void;
   readonly clientFaders: faderData[];
+  setValue: (index: number, value: number) => void;
+  faderInit: (type: faderBank) => void;
 }
 
 app.use(express.static(__dirname + '/../public', { index: 'index.html' }));
@@ -34,21 +36,35 @@ wss.on('connection', (ws: myWebSocket, req) => {
   ws.redrawFadersJSON = { new: '', old: '' };
   ws.updateFadersJSON = { new: '', old: '' };
   ws.selectedFixtures = [];
+  ws.setValue = (index, value) => {
+    setValue(index, value, ws._faders);
+  };
+  ws.faderInit = (x) => {ws._faders = faderInit(x)};
   Object.defineProperty(ws, 'clientFaders', {
     get: (): faderData[] => {
       return ws._faders.map(
         (x): faderData => {
           switch (x.type) {
             case 'dmx':
-              console.error('code dmx clientFader');
-              return { fader: { type: 'empty' }, value: 0, label: '' };
+              let xDmx = x as { type: 'dmx'; index: number };
+              return {
+                fader: {
+                  type: 'range',
+                  min: 0,
+                  max: 255,
+                  step: 1,
+                  loop: false,
+                },
+                value: dmx.getValue(xDmx.index),
+                label: xDmx.index.toString(),
+              };
               break;
             case 'fixture':
               return {
                 fader: x.fixture.fader,
                 value: x.fixture.getValue('value'),
                 label: x.fixture.label,
-              } as faderData;
+              };
               break;
             case 'empty':
               console.error('code empty clientFader');
@@ -77,10 +93,21 @@ wss.on('connection', (ws: myWebSocket, req) => {
       console.log(e);
     }
   });
-  ws._faders = faderInit('fixture');
-  ws.dmxValuesUpdate = (dmxValues) => {
-    /* ws.send(JSON.stringify(api.processDmxValuesUpdate(dmxValues)));
-    ws.send(JSON.stringify(api.processApiCmd({command: 'fixtures'}))); */
+  ws._faders = faderInit('dmx');
+  ws.dmxValuesUpdate = (changes) => {
+    let updates: faderUpdate[] = [];
+    for (let x = 0; x < changes.length; x++) {
+      for (let y = 0; y < ws._faders.length; y++) {
+        let fader = ws._faders[y] as {type: 'dmx'; index: number};
+        if (ws._faders[y].type == 'dmx' && fader.index == changes[x].channel) {
+          updates.push({index: y, value: changes[x].value})
+        }
+      }
+    }
+    if (updates.length > 0) {
+      let updateMsg: serverMsg = {type: 'updateFaders', data: updates};
+      ws.send(JSON.stringify(updateMsg));
+    }
   };
   dmx!.on('change', ws.dmxValuesUpdate);
   ws.on('close', () => {
@@ -112,20 +139,39 @@ wss.on('close', () => {
   clearInterval(beatInterval);
 });
 
-function faderInit(type: faderType): serverFader[] {
+function faderInit(type: faderBank): serverFader[] {
   let rtn: serverFader[] = [];
   switch (type) {
     case 'dmx':
-      console.error('code dmx serverFader init');
+      rtn = dmx.getValue().slice(1).map((x, index) => ({ type: 'dmx', index: index + 1})); //slice(1) and +1 offset
       break;
-    case 'fixture':
+    case 'fixtures':
       rtn = fixtures.all.map(
         (x): serverFader => ({ type: 'fixture', fixture: x })
       );
       break;
-    case 'fixtureProperty':
-      console.error('code fixtureProperty serverFader init');
+    default:
+      console.error('code serverFader init type: ' + type);
       break;
   }
   return rtn;
+}
+
+function setValue(index: number, value: number, faders: serverFader[]) {
+  switch (faders[index].type) {
+    case 'dmx':
+      let dmxFader = faders[index] as { type: 'dmx'; index: number}
+      dmx.setValues([{channel: dmxFader.index, value: value}]);
+      break;
+    case 'fixture':
+      let fixtureFader = faders[index] as {
+        type: 'fixture';
+        fixture: import('./fixtures').default;
+      };
+      fixtureFader.fixture.setValue(value);
+      break;
+    case 'empty':
+      console.error('Cannot setValue for empty faders');
+      break;
+  }
 }

@@ -2,8 +2,12 @@ type fixtureInit = { label: string; type: fixtureType; dmx: number[] };
 
 type dmxClaim = { fixture: number; type: channelType };
 
-type serverFader = {type: 'fixture', fixture: import('../../fixtures').default} | {type: 'dmx'} | {type: 'empty'};
+type serverFader =
+  | { type: 'fixture'; fixture: import('../../fixtures').default }
+  | { type: 'dmx'; index: number}
+  | { type: 'empty' };
 
+type dmxChange = {channel: number, value: number};
 
 /* type fader =
   | { type: 'fixture'; fixture: import('../fixtures').default; apiFader: rangeFader | enumFader }
@@ -16,8 +20,6 @@ type serverFader = {type: 'fixture', fixture: import('../../fixtures').default} 
     }
   | { type: 'group'; group: 'code me'; apiFader: rangeFader | enumFader };
  */
-
-
 
 /* class myWebSocket extends WebSocket {
   isAlive: boolean = true;
