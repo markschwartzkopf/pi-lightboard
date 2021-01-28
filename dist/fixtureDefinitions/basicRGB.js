@@ -1,18 +1,5 @@
 "use strict";
-/* --r1: 255;
-        --g1: 214;
-        --b1: 170;
-        --r2: 201;
-        --g2: 226;
-        --b2: 255;
-        --r3: 255;
-        --g3: 147;
-        --b3: 41; */
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const basicRGB_1 = __importDefault(require("./fixtureDefinitions/basicRGB"));
 const dmxFader = {
     type: 'range',
     min: 0,
@@ -20,11 +7,14 @@ const dmxFader = {
     step: 1,
     loop: false
 };
-const definitions = {
-    basic: { dmx: [{ ...dmxFader, subLabel1: 'value' }] },
-    basicRGB: basicRGB_1.default
+exports.default = {
+    dmx: [{ ...dmxFader, subLabel1: 'red' }, { ...dmxFader, subLabel1: 'blue' }, { ...dmxFader, subLabel1: 'green' }],
+    indirect: {
+        properties: [{ ...dmxFader, subLabel1: 'hue' }, { ...dmxFader, subLabel1: 'saturation' }, { ...dmxFader, subLabel1: 'value' }],
+        set: rgbFromHsv,
+        get: hsvFromRgb,
+    },
 };
-exports.default = definitions;
 //functions for processing indirect properties to and from DMX:
 function rgbFromHsv(rgb, type, newVal) {
     let hsv = rgbToHsv(rgb);

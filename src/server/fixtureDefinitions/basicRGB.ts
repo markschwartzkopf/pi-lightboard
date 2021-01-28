@@ -1,15 +1,3 @@
-/* --r1: 255;
-        --g1: 214;
-        --b1: 170;
-        --r2: 201;
-        --g2: 226;
-        --b2: 255;
-        --r3: 255;
-        --g3: 147;
-        --b3: 41; */
-
-import basicRGB from './fixtureDefinitions/basicRGB';
-
 const dmxFader: rangeFader = {
   type: 'range',
   min: 0,
@@ -18,24 +6,14 @@ const dmxFader: rangeFader = {
   loop: false
 };
 
-const definitions: fixtureDefinitions = {
-  basic: { dmx: [{...dmxFader, subLabel1: 'value'}] },
-  basicRGB: basicRGB
-};
-
-export default definitions;
-
-//type definitions:
-
-type fixtureDefinitions = {
-  [type in fixtureType]: { dmx: (rangeFader | enumFader)[]; indirect?: indirect }
-};
-
-type indirect = {
-  properties: (rangeFader | enumFader)[];
-  set: (dmx: number[], indirectProperty: string, newVal: number) => number[];
-  get: (dmx: number[], indirectProperty: string) => number;
-};
+export default {
+  dmx: [{...dmxFader, subLabel1: 'red'}, {...dmxFader, subLabel1: 'blue'}, {...dmxFader, subLabel1: 'green'}],
+  indirect: {
+    properties: [{...dmxFader, subLabel1: 'hue'}, {...dmxFader, subLabel1: 'saturation'}, {...dmxFader, subLabel1: 'value'}],
+    set: rgbFromHsv,
+    get: hsvFromRgb,
+  },
+}
 
 //functions for processing indirect properties to and from DMX:
 
