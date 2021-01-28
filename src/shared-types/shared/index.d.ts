@@ -53,9 +53,9 @@ type clientMsg =
 
 type faderBank = 'dmx' | 'fixtures' | 'groups' | number;
 
-type lightboardUpdate =
+/* type lightboardUpdate =
   | { type: 'dmxNames'; data: string[] }
-  | { type: 'other'; data: string };
+  | { type: 'other'; data: string }; */
 
 type fixtureProperties = {
   fixture: number;

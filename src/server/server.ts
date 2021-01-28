@@ -13,10 +13,9 @@ interface myWebSocket extends WebSocket {
   isAlive: boolean;
   ip: string;
   _faders: serverFader[];
-  redrawFadersJSON: { new: string; old: string };
-  updateFadersJSON: { new: string; old: string };
+  removeSubscriptions: (() => void)[];
   selectedFixtures: { type: faderType; number: number }[];
-  dmxValuesUpdate?: (changes: dmxChange[]) => void;
+  dmxValuesUpdate: (changes: dmxChange[]) => void;
   readonly clientFaders: faderData[];
   setValue: (index: number, value: number) => void;
   faderInit: (type: faderBank) => void;
@@ -33,13 +32,14 @@ wss.on('connection', (ws: myWebSocket, req) => {
   ws.isAlive = true;
   ws.ip = 'no ip given';
   ws._faders = [];
-  ws.redrawFadersJSON = { new: '', old: '' };
-  ws.updateFadersJSON = { new: '', old: '' };
+  ws.removeSubscriptions = [];
   ws.selectedFixtures = [];
   ws.setValue = (index, value) => {
     setValue(index, value, ws._faders);
   };
-  ws.faderInit = (x) => {ws._faders = faderInit(x)};
+  ws.faderInit = (x) => {
+    faderInit(x, ws);
+  };
   Object.defineProperty(ws, 'clientFaders', {
     get: (): faderData[] => {
       return ws._faders.map(
@@ -47,16 +47,22 @@ wss.on('connection', (ws: myWebSocket, req) => {
           switch (x.type) {
             case 'dmx':
               let xDmx = x as { type: 'dmx'; index: number };
+              let index = xDmx.index;
+              let fader: rangeFader = {
+                type: 'range',
+                min: 0,
+                max: 255,
+                step: 1,
+                loop: false,
+              };
+              if (dmx.claimed[index].fixture) {
+                fader.subLabel1 = dmx.claimed[index].type;
+                fader.subLabel2 = dmx.claimed[index].fixture!.label;
+              }
               return {
-                fader: {
-                  type: 'range',
-                  min: 0,
-                  max: 255,
-                  step: 1,
-                  loop: false,
-                },
-                value: dmx.getValue(xDmx.index),
-                label: xDmx.index.toString(),
+                fader: fader,
+                value: dmx.getValue(index),
+                label: index.toString(),
               };
               break;
             case 'fixture':
@@ -92,26 +98,28 @@ wss.on('connection', (ws: myWebSocket, req) => {
       console.log(msg);
       console.log(e);
     }
-  });
-  ws._faders = faderInit('dmx');
+  });  
   ws.dmxValuesUpdate = (changes) => {
     let updates: faderUpdate[] = [];
     for (let x = 0; x < changes.length; x++) {
       for (let y = 0; y < ws._faders.length; y++) {
-        let fader = ws._faders[y] as {type: 'dmx'; index: number};
+        let fader = ws._faders[y] as { type: 'dmx'; index: number };
         if (ws._faders[y].type == 'dmx' && fader.index == changes[x].channel) {
-          updates.push({index: y, value: changes[x].value})
+          updates.push({ index: y, value: changes[x].value });
         }
       }
     }
     if (updates.length > 0) {
-      let updateMsg: serverMsg = {type: 'updateFaders', data: updates};
+      let updateMsg: serverMsg = { type: 'updateFaders', data: updates };
       ws.send(JSON.stringify(updateMsg));
     }
   };
-  dmx!.on('change', ws.dmxValuesUpdate);
+  faderInit('dmx', ws);
+  //dmx!.on('change', ws.dmxValuesUpdate);
   ws.on('close', () => {
-    dmx!.removeListener('change', ws.dmxValuesUpdate!);
+    for (let x = 0; x < ws.removeSubscriptions.length; x++) {
+      ws.removeSubscriptions[x]();
+    }
     console.log('Connection properly closed for: ' + ws.ip);
   });
 });
@@ -139,29 +147,56 @@ wss.on('close', () => {
   clearInterval(beatInterval);
 });
 
-function faderInit(type: faderBank): serverFader[] {
-  let rtn: serverFader[] = [];
+function faderInit(type: faderBank, ws: myWebSocket): void {
+  for (let x = 0; x < ws.removeSubscriptions.length; x++) {
+    ws.removeSubscriptions[x]();
+  }
+  dmx!.on('change', ws.dmxValuesUpdate);
+  ws.removeSubscriptions[0] = () => {
+    dmx!.removeListener('change', ws.dmxValuesUpdate);
+  };
+  ws._faders = [];
   switch (type) {
     case 'dmx':
-      rtn = dmx.getValue().slice(1).map((x, index) => ({ type: 'dmx', index: index + 1})); //slice(1) and +1 offset
+      ws._faders = dmx
+        .getValue()
+        .slice(1)
+        .map((x, index) => ({ type: 'dmx', index: index + 1 })); //slice(1) and +1 offset
       break;
     case 'fixtures':
-      rtn = fixtures.all.map(
-        (x): serverFader => ({ type: 'fixture', fixture: x })
-      );
+      for (let x = 0; x < fixtures.all.length; x++) {
+        ws._faders.push({ type: 'fixture', fixture: fixtures.all[x] });
+        let xCopy = x;
+        let fixtureChangeCallback = (
+          changes: { valueName: string; value: number }[]
+        ) => {
+          for (let y = 0; y < changes.length; y++) {
+            if (changes[y].valueName == 'value') {
+              let updateMsg: serverMsg = {
+                type: 'updateFaders',
+                data: [{ index: xCopy, value: changes[y].value }],
+              };
+              ws.send(JSON.stringify(updateMsg));
+            }
+          }
+        };
+        fixtures.all[x].on('change', fixtureChangeCallback);
+        ws.removeSubscriptions.push(() => {
+          fixtures.all[x].removeListener('change', fixtureChangeCallback);
+        });
+      }
       break;
     default:
       console.error('code serverFader init type: ' + type);
       break;
   }
-  return rtn;
 }
 
 function setValue(index: number, value: number, faders: serverFader[]) {
   switch (faders[index].type) {
     case 'dmx':
-      let dmxFader = faders[index] as { type: 'dmx'; index: number}
-      dmx.setValues([{channel: dmxFader.index, value: value}]);
+      let dmxFader = faders[index] as { type: 'dmx'; index: number };
+      dmx.setValues([{ channel: dmxFader.index, value: value }]);
       break;
     case 'fixture':
       let fixtureFader = faders[index] as {

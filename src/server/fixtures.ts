@@ -3,15 +3,21 @@ import { EventEmitter } from 'events';
 import Dmx from './dmx';
 import definitions from './fixtureDefinitions';
 
+declare interface Fixture {
+  on(
+    event: 'change',
+    listener: (changes: { valueName: string; value: number }[]) => void
+  ): this;
+}
+
 let nextId = 0;
-let allFixturesEver: Fixture[] = [];
 
 class Fixture extends EventEmitter {
   label: string;
   type: fixtureType;
   #dmxChannels: number[];
   _universe: Dmx;
-  readonly #id: number;
+  readonly id: number;
 
   constructor(
     label: string,
@@ -23,7 +29,7 @@ class Fixture extends EventEmitter {
     this.label = label;
     this.type = type;
     this._universe = universe;
-    this.#id = nextId;
+    this.id = nextId;
     nextId++;
     if (
       Fixture.validateDmxArray(dmxChannels, universe) &&
@@ -34,25 +40,33 @@ class Fixture extends EventEmitter {
       for (let x = 0; x < definitions[type].dmx.length; x++) {
         if (this.#dmxChannels[x] != 0)
           universe.claimed[this.#dmxChannels[x]] = {
-            fixture: this.#id,
-            type: definitions[type].dmx[x],
+            fixture: this,
+            type: definitions[type].dmx[x].subLabel1!,
           };
       }
     } else this.#dmxChannels = new Array(definitions[type].dmx.length).fill(0);
-    allFixturesEver[this.#id] = this;
   }
 
   get dmxChannels() {
     return this.#dmxChannels.slice(0);
   }
 
+  dmxUpdate() {
+    this.emit('change', this.getValue());
+  }
+
   getValue(valueName: string): number;
-  getValue(): number[];
-  getValue(valueName?: string): number | number[] {
+  getValue(): { valueName: string; value: number }[];
+  getValue(
+    valueName?: string
+  ): number | { valueName: string; value: number }[] {
     if (!valueName) {
-      let rtn: number[] = [];
+      let rtn: { valueName: string; value: number }[] = [];
       for (let x = 0; x < definitions[this.type].dmx.length; x++) {
-        rtn.push(this.getValue(definitions[this.type].dmx[x].subLabel1!));
+        rtn.push({
+          valueName: definitions[this.type].dmx[x].subLabel1!,
+          value: this.getValue(definitions[this.type].dmx[x].subLabel1!),
+        });
       }
       if (definitions[this.type].indirect) {
         for (
@@ -60,11 +74,12 @@ class Fixture extends EventEmitter {
           x < definitions[this.type].indirect!.properties.length;
           x++
         ) {
-          rtn.push(
-            this.getValue(
+          rtn.push({
+            valueName: definitions[this.type].indirect!.properties[x].subLabel1!,
+            value: this.getValue(
               definitions[this.type].indirect!.properties[x].subLabel1!
-            )
-          );
+            ),
+          });
         }
       }
       return rtn;
@@ -97,9 +112,12 @@ class Fixture extends EventEmitter {
     if (!valueName) valueName = 'value';
     for (let x = 0; x < definitions[this.type].dmx.length; x++) {
       if (valueName == definitions[this.type].dmx[x].subLabel1!) {
-        this._universe.setValues([
-          { channel: this.#dmxChannels[x], value: newVal },
-        ]);
+        this._universe.setValues(
+          [{ channel: this.#dmxChannels[x], value: newVal }],
+          -1,
+          this.id
+        );
+        this.emit('change', [valueName], [newVal]);
         return;
       }
     }
@@ -119,8 +137,11 @@ class Fixture extends EventEmitter {
           this._universe.setValues(
             definitions[this.type]
               .indirect!.set(dmxArray, valueName, newVal)
-              .map((val, index) => ({ channel: dmxIndex[index], value: val }))
+              .map((val, index) => ({ channel: dmxIndex[index], value: val })),
+            -1,
+            this.id
           );
+          this.emit('change', [{ valueName: valueName, value: newVal }]);
           return;
         }
       }
@@ -167,16 +188,12 @@ class Fixture extends EventEmitter {
           !Number.isInteger(arr[x]) ||
           arr[x] < 0 ||
           arr[x] > 512 ||
-          (universe && universe.claimed[arr[x]].fixture != -1)
+          (universe && universe.claimed[arr[x]].fixture != undefined)
         )
           valid = false;
       }
     } else valid = false;
     return valid;
-  }
-
-  static getFixtureById(id: number): Fixture | undefined {
-    return allFixturesEver[id];
   }
 }
 

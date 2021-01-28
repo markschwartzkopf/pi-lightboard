@@ -15,21 +15,19 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-var _dmxChannels, _id;
+var _dmxChannels;
 Object.defineProperty(exports, "__esModule", { value: true });
 const events_1 = require("events");
 const fixtureDefinitions_1 = __importDefault(require("./fixtureDefinitions"));
 let nextId = 0;
-let allFixturesEver = [];
 class Fixture extends events_1.EventEmitter {
     constructor(label, type, dmxChannels, universe) {
         super();
         _dmxChannels.set(this, void 0);
-        _id.set(this, void 0);
         this.label = label;
         this.type = type;
         this._universe = universe;
-        __classPrivateFieldSet(this, _id, nextId);
+        this.id = nextId;
         nextId++;
         if (Fixture.validateDmxArray(dmxChannels, universe) &&
             dmxChannels.length == fixtureDefinitions_1.default[type].dmx.length) {
@@ -38,27 +36,35 @@ class Fixture extends events_1.EventEmitter {
             for (let x = 0; x < fixtureDefinitions_1.default[type].dmx.length; x++) {
                 if (__classPrivateFieldGet(this, _dmxChannels)[x] != 0)
                     universe.claimed[__classPrivateFieldGet(this, _dmxChannels)[x]] = {
-                        fixture: __classPrivateFieldGet(this, _id),
-                        type: fixtureDefinitions_1.default[type].dmx[x],
+                        fixture: this,
+                        type: fixtureDefinitions_1.default[type].dmx[x].subLabel1,
                     };
             }
         }
         else
             __classPrivateFieldSet(this, _dmxChannels, new Array(fixtureDefinitions_1.default[type].dmx.length).fill(0));
-        allFixturesEver[__classPrivateFieldGet(this, _id)] = this;
     }
     get dmxChannels() {
         return __classPrivateFieldGet(this, _dmxChannels).slice(0);
+    }
+    dmxUpdate() {
+        this.emit('change', this.getValue());
     }
     getValue(valueName) {
         if (!valueName) {
             let rtn = [];
             for (let x = 0; x < fixtureDefinitions_1.default[this.type].dmx.length; x++) {
-                rtn.push(this.getValue(fixtureDefinitions_1.default[this.type].dmx[x].subLabel1));
+                rtn.push({
+                    valueName: fixtureDefinitions_1.default[this.type].dmx[x].subLabel1,
+                    value: this.getValue(fixtureDefinitions_1.default[this.type].dmx[x].subLabel1),
+                });
             }
             if (fixtureDefinitions_1.default[this.type].indirect) {
                 for (let x = 0; x < fixtureDefinitions_1.default[this.type].indirect.properties.length; x++) {
-                    rtn.push(this.getValue(fixtureDefinitions_1.default[this.type].indirect.properties[x].subLabel1));
+                    rtn.push({
+                        valueName: fixtureDefinitions_1.default[this.type].indirect.properties[x].subLabel1,
+                        value: this.getValue(fixtureDefinitions_1.default[this.type].indirect.properties[x].subLabel1),
+                    });
                 }
             }
             return rtn;
@@ -83,28 +89,20 @@ class Fixture extends events_1.EventEmitter {
             valueName = 'value';
         for (let x = 0; x < fixtureDefinitions_1.default[this.type].dmx.length; x++) {
             if (valueName == fixtureDefinitions_1.default[this.type].dmx[x].subLabel1) {
-                this._universe.setValues([
-                    { channel: __classPrivateFieldGet(this, _dmxChannels)[x], value: newVal },
-                ]);
+                this._universe.setValues([{ channel: __classPrivateFieldGet(this, _dmxChannels)[x], value: newVal }], -1, this.id);
+                this.emit('change', [valueName], [newVal]);
                 return;
             }
         }
         if (fixtureDefinitions_1.default[this.type].indirect) {
             for (let x = 0; x < fixtureDefinitions_1.default[this.type].indirect.properties.length; x++) {
-                console.log('indirect ' +
-                    fixtureDefinitions_1.default[this.type].indirect.properties[x].subLabel1 +
-                    ' compareed to ' +
-                    valueName);
                 if (valueName == fixtureDefinitions_1.default[this.type].indirect.properties[x].subLabel1) {
-                    console.log(newVal);
                     let dmxArray = __classPrivateFieldGet(this, _dmxChannels).map((n) => this._universe.getValue(n));
                     let dmxIndex = __classPrivateFieldGet(this, _dmxChannels);
-                    console.log(fixtureDefinitions_1.default[this.type]
-                        .indirect.set(dmxArray, valueName, newVal)
-                        .map((val, index) => ({ channel: dmxIndex[index], value: val })));
                     this._universe.setValues(fixtureDefinitions_1.default[this.type]
                         .indirect.set(dmxArray, valueName, newVal)
-                        .map((val, index) => ({ channel: dmxIndex[index], value: val })));
+                        .map((val, index) => ({ channel: dmxIndex[index], value: val })), -1, this.id);
+                    this.emit('change', [{ valueName: valueName, value: newVal }]);
                     return;
                 }
             }
@@ -139,7 +137,7 @@ class Fixture extends events_1.EventEmitter {
                     !Number.isInteger(arr[x]) ||
                     arr[x] < 0 ||
                     arr[x] > 512 ||
-                    (universe && universe.claimed[arr[x]].fixture != -1))
+                    (universe && universe.claimed[arr[x]].fixture != undefined))
                     valid = false;
             }
         }
@@ -147,9 +145,6 @@ class Fixture extends events_1.EventEmitter {
             valid = false;
         return valid;
     }
-    static getFixtureById(id) {
-        return allFixturesEver[id];
-    }
 }
-_dmxChannels = new WeakMap(), _id = new WeakMap();
+_dmxChannels = new WeakMap();
 exports.default = Fixture;

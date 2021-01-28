@@ -65,13 +65,16 @@ class Dmx extends EventEmitter {
     }
   };
 
-  claimed: dmxClaim[] = new Array(513).fill({ fixture: -1, type: 'value' });
+  claimed: dmxClaim[] = new Array(513).fill({ fixture: undefined, type: '' });
 
   constructor() {
     super();
   }
 
-  setValues(changes: dmxChange[], duration?: number) {
+  setValues(changes: dmxChange[], duration?: number, fixtureId?: number) {
+    if (!fixtureId) fixtureId = -1;
+    let changedFixtureIds: number[] = [];
+    let changedFixtures: import('./fixtures').default[] = [];
     let oldValues: dmxChange[] = [];
     for (let x = 0; x < changes.length; x++) {
       if (
@@ -82,15 +85,31 @@ class Dmx extends EventEmitter {
         console.error('Invalid DMX channel: ' + changes[x].channel);
         return;
       }
-      if (!Number.isFinite(changes[x].value) || changes[x].value < 0 || changes[x].value > 255) {
+      if (
+        !Number.isFinite(changes[x].value) ||
+        changes[x].value < 0 ||
+        changes[x].value > 255
+      ) {
         console.error('Invalid DMX value: ' + changes[x].value);
         return;
       }
-      oldValues.push({channel: changes[x].channel, value: this._dmxArray[changes[x].channel]})
+      oldValues.push({
+        channel: changes[x].channel,
+        value: this._dmxArray[changes[x].channel],
+      });
       this._dmxArray[changes[x].channel] = changes[x].value;
+      if (this.claimed[changes[x].channel].fixture) {
+        let changedFixture = this.claimed[changes[x].channel].fixture;
+        if (changedFixture!.id != fixtureId && changedFixtureIds.indexOf(changedFixture!.id) == -1) {
+          changedFixtureIds.push(changedFixture!.id);
+          changedFixtures.push(changedFixture!);
+        }
+      }
     }
-    //send to dmx serial port
-    //update fixture if change is not from fixture
+    //send to dmx serial port?
+    for (let x = 0; x < changedFixtures.length; x++) {
+      changedFixtures[x].dmxUpdate();
+    }
     this.emit('change', changes, oldValues);
   }
 

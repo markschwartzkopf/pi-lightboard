@@ -131,8 +131,26 @@ function drawFaders(newFaders: faderData[]): void {
 
     div = document.createElement('div');
     div.id = 'label-' + x;
-    div.innerHTML = faders[x].label; //add sub labels
-    div.className = 'fader-name';
+    let p = document.createElement('p');
+    p.innerHTML = faders[x].label;
+    div.appendChild(p);
+    if (faders[x].fader.subLabel1) {
+      div.appendChild(document.createElement('br'));
+      p = document.createElement('p');
+      p.style.color = 'green';
+      p.innerHTML = faders[x].fader.subLabel1!;
+      div.appendChild(p);
+    }
+    if (faders[x].fader.subLabel2) {
+      div.appendChild(document.createElement('br'));
+      p = document.createElement('p');
+      p.style.color = 'blue';
+      p.innerHTML = faders[x].fader.subLabel2!;
+      div.appendChild(p);
+    }
+
+    //div.innerHTML = faders[x].label; //add sub labels
+    div.className = 'fader-label';
     div.style.gridColumn = column;
     div.style.gridRow = '3/4';
     div.oncontextmenu = (e) => {
