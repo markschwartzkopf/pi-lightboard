@@ -63,7 +63,7 @@ class Dmx extends events_1.EventEmitter {
     }
     setValues(changes, duration, fixtureId) {
         if (!fixtureId)
-            fixtureId = -1;
+            fixtureId = '';
         let changedFixtureIds = [];
         let changedFixtures = [];
         let oldValues = [];

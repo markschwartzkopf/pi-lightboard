@@ -1,5 +1,3 @@
-type faderType = 'dmx' | 'fixture' | 'fixtureProperty';
-
 type serverMsg =
   | { type: 'error'; data: string }
   | { type: 'info'; data: string }
@@ -8,8 +6,15 @@ type serverMsg =
   | { type: 'drawSelected'; data: any }
   | { type: 'updateSelected'; data: any };
 
+
+
 type faderUpdate = { index: number; value: number };
-type faderData = { fader: fader; value: number; label: string };
+type faderData = {
+  fader: fader;
+  value: number;
+  label: string;
+  selected?: true;
+};
 type fader = rangeFader | enumFader | emptyFader;
 
 type rangeFader = {
@@ -44,12 +49,14 @@ type clientMsg =
       command: 'setFaderBank';
       bank: faderBank;
     }
-  | {
-      command: 'select';
-      number: number;
-      operation: 'selected' | 'deselected' | 'toggle';
-      reset: boolean;
-    };
+  | ({ command: 'select' } & selectCommand);
+
+type selectCommand = {
+  number: number;
+  type: 'faders' | 'selected';
+  operation: 'selected' | 'deselected';
+  reset: boolean;
+};
 
 type faderBank = 'dmx' | 'fixtures' | 'groups' | number;
 

@@ -23,6 +23,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const global_1 = require("./global");
+const groups_1 = __importDefault(require("./groups"));
 const api = __importStar(require("./api"));
 // todo: switch to a more minimal html server
 const express_1 = __importDefault(require("express"));
@@ -37,7 +38,8 @@ wss.on('connection', (ws, req) => {
     ws.ip = 'no ip given';
     ws._faders = [];
     ws.removeSubscriptions = [];
-    ws.selectedFixtures = [];
+    ws.selection = new groups_1.default();
+    ws.select = (cmd) => (select(cmd, ws));
     ws.setValue = (index, value) => {
         setValue(index, value, ws._faders);
     };
@@ -49,8 +51,7 @@ wss.on('connection', (ws, req) => {
             return ws._faders.map((x) => {
                 switch (x.type) {
                     case 'dmx':
-                        let xDmx = x;
-                        let index = xDmx.index;
+                        let index = x.channel;
                         let fader = {
                             type: 'range',
                             min: 0,
@@ -73,6 +74,13 @@ wss.on('connection', (ws, req) => {
                             fader: x.fixture.fader,
                             value: x.fixture.getValue('value'),
                             label: x.fixture.label,
+                        };
+                        break;
+                    case 'group':
+                        return {
+                            fader: { type: 'empty' },
+                            value: 0,
+                            label: 'code me'
                         };
                         break;
                     case 'empty':
@@ -107,7 +115,7 @@ wss.on('connection', (ws, req) => {
         for (let x = 0; x < changes.length; x++) {
             for (let y = 0; y < ws._faders.length; y++) {
                 let fader = ws._faders[y];
-                if (ws._faders[y].type == 'dmx' && fader.index == changes[x].channel) {
+                if (ws._faders[y].type == 'dmx' && fader.channel == changes[x].channel) {
                     updates.push({ index: y, value: changes[x].value });
                 }
             }
@@ -146,6 +154,29 @@ const beatInterval = setInterval(() => {
 wss.on('close', () => {
     clearInterval(beatInterval);
 });
+function select(cmd, ws) {
+    if (cmd.reset) {
+        ws.selection = new groups_1.default();
+        if (cmd.operation == 'deselected')
+            return;
+    }
+    switch (cmd.type) {
+        case 'faders':
+            let fader = ws._faders[cmd.number];
+            if (fader.type != 'empty') {
+                if (cmd.operation == 'selected') {
+                    ws.selection.addMember(fader);
+                }
+                else
+                    ws.selection.removeMember(fader);
+                console.log(ws.selection._getIdListByType('fixture'));
+            }
+            break;
+        case 'selected':
+            console.error('code select properties');
+            break;
+    }
+}
 function faderInit(type, ws) {
     for (let x = 0; x < ws.removeSubscriptions.length; x++) {
         ws.removeSubscriptions[x]();
@@ -160,7 +191,7 @@ function faderInit(type, ws) {
             ws._faders = global_1.dmx
                 .getValue()
                 .slice(1)
-                .map((x, index) => ({ type: 'dmx', index: index + 1 })); //slice(1) and +1 offset
+                .map((x, index) => ({ type: 'dmx', channel: index + 1 })); //slice(1) and +1 offset
             break;
         case 'fixtures':
             for (let x = 0; x < global_1.fixtures.all.length; x++) {
@@ -192,7 +223,7 @@ function setValue(index, value, faders) {
     switch (faders[index].type) {
         case 'dmx':
             let dmxFader = faders[index];
-            global_1.dmx.setValues([{ channel: dmxFader.index, value: value }]);
+            global_1.dmx.setValues([{ channel: dmxFader.channel, value: value }]);
             break;
         case 'fixture':
             let fixtureFader = faders[index];

@@ -19,16 +19,19 @@ var _dmxChannels;
 Object.defineProperty(exports, "__esModule", { value: true });
 const events_1 = require("events");
 const fixtureDefinitions_1 = __importDefault(require("./fixtureDefinitions"));
-let nextId = 0;
+const uuid_1 = require("uuid");
 class Fixture extends events_1.EventEmitter {
-    constructor(label, type, dmxChannels, universe) {
+    constructor(label, type, dmxChannels, universe, id) {
         super();
         _dmxChannels.set(this, void 0);
         this.label = label;
         this.type = type;
         this._universe = universe;
-        this.id = nextId;
-        nextId++;
+        if (id) {
+            this.id = id;
+        }
+        else
+            this.id = uuid_1.v4();
         if (Fixture.validateDmxArray(dmxChannels, universe) &&
             dmxChannels.length == fixtureDefinitions_1.default[type].dmx.length) {
             __classPrivateFieldSet(this, _dmxChannels, dmxChannels);

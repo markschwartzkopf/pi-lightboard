@@ -2,7 +2,9 @@
 export { myWebSocket };
 import definitions from './fixtureDefinitions';
 import { dmx, fixtures } from './global';
+import Group from './groups';
 import * as api from './api';
+
 
 // todo: switch to a more minimal html server
 import express from 'express';
@@ -14,11 +16,12 @@ interface myWebSocket extends WebSocket {
   ip: string;
   _faders: serverFader[];
   removeSubscriptions: (() => void)[];
-  selectedFixtures: { type: faderType; number: number }[];
   dmxValuesUpdate: (changes: dmxChange[]) => void;
   readonly clientFaders: faderData[];
   setValue: (index: number, value: number) => void;
   faderInit: (type: faderBank) => void;
+  selection: Group;
+  select: (cmd: selectCommand) => void;
 }
 
 app.use(express.static(__dirname + '/../public', { index: 'index.html' }));
@@ -33,7 +36,8 @@ wss.on('connection', (ws: myWebSocket, req) => {
   ws.ip = 'no ip given';
   ws._faders = [];
   ws.removeSubscriptions = [];
-  ws.selectedFixtures = [];
+  ws.selection = new Group();
+  ws.select = (cmd) => (select(cmd, ws))
   ws.setValue = (index, value) => {
     setValue(index, value, ws._faders);
   };
@@ -46,8 +50,7 @@ wss.on('connection', (ws: myWebSocket, req) => {
         (x): faderData => {
           switch (x.type) {
             case 'dmx':
-              let xDmx = x as { type: 'dmx'; index: number };
-              let index = xDmx.index;
+              let index = x.channel;
               let fader: rangeFader = {
                 type: 'range',
                 min: 0,
@@ -71,6 +74,13 @@ wss.on('connection', (ws: myWebSocket, req) => {
                 value: x.fixture.getValue('value'),
                 label: x.fixture.label,
               };
+              break;
+            case 'group':
+              return {
+                fader: {type: 'empty'},
+                value: 0,
+                label: 'code me'
+              }
               break;
             case 'empty':
               console.error('code empty clientFader');
@@ -103,8 +113,8 @@ wss.on('connection', (ws: myWebSocket, req) => {
     let updates: faderUpdate[] = [];
     for (let x = 0; x < changes.length; x++) {
       for (let y = 0; y < ws._faders.length; y++) {
-        let fader = ws._faders[y] as { type: 'dmx'; index: number };
-        if (ws._faders[y].type == 'dmx' && fader.index == changes[x].channel) {
+        let fader = ws._faders[y] as { type: 'dmx'; channel: number };
+        if (ws._faders[y].type == 'dmx' && fader.channel == changes[x].channel) {
           updates.push({ index: y, value: changes[x].value });
         }
       }
@@ -147,6 +157,27 @@ wss.on('close', () => {
   clearInterval(beatInterval);
 });
 
+function select(cmd: selectCommand, ws: myWebSocket) {
+  if (cmd.reset) {
+    ws.selection = new Group();
+    if (cmd.operation == 'deselected') return
+  }
+  switch(cmd.type) {
+    case 'faders':
+      let fader = ws._faders[cmd.number];
+      if (fader.type != 'empty') {
+        if (cmd.operation == 'selected') {
+          ws.selection.addMember(fader);
+        } else ws.selection.removeMember(fader);
+        console.log(ws.selection._getIdListByType('fixture'))
+      }
+      break;
+    case 'selected':
+      console.error('code select properties')
+      break;
+  }
+}
+
 function faderInit(type: faderBank, ws: myWebSocket): void {
   for (let x = 0; x < ws.removeSubscriptions.length; x++) {
     ws.removeSubscriptions[x]();
@@ -161,7 +192,7 @@ function faderInit(type: faderBank, ws: myWebSocket): void {
       ws._faders = dmx
         .getValue()
         .slice(1)
-        .map((x, index) => ({ type: 'dmx', index: index + 1 })); //slice(1) and +1 offset
+        .map((x, index) => ({ type: 'dmx', channel: index + 1 })); //slice(1) and +1 offset
       break;
     case 'fixtures':
       for (let x = 0; x < fixtures.all.length; x++) {
@@ -195,8 +226,8 @@ function faderInit(type: faderBank, ws: myWebSocket): void {
 function setValue(index: number, value: number, faders: serverFader[]) {
   switch (faders[index].type) {
     case 'dmx':
-      let dmxFader = faders[index] as { type: 'dmx'; index: number };
-      dmx.setValues([{ channel: dmxFader.index, value: value }]);
+      let dmxFader = faders[index] as { type: 'dmx'; channel: number };
+      dmx.setValues([{ channel: dmxFader.channel, value: value }]);
       break;
     case 'fixture':
       let fixtureFader = faders[index] as {

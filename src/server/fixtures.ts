@@ -2,6 +2,7 @@
 import { EventEmitter } from 'events';
 import Dmx from './dmx';
 import definitions from './fixtureDefinitions';
+import { v4 as uuidv4 } from 'uuid';
 
 declare interface Fixture {
   on(
@@ -10,27 +11,25 @@ declare interface Fixture {
   ): this;
 }
 
-let nextId = 0;
-
 class Fixture extends EventEmitter {
   label: string;
   type: fixtureType;
   #dmxChannels: number[];
   _universe: Dmx;
-  readonly id: number;
+  readonly id: string;
 
   constructor(
     label: string,
     type: fixtureType,
     dmxChannels: number[],
-    universe: Dmx
+    universe: Dmx,
+    id?: string
   ) {
     super();
     this.label = label;
     this.type = type;
     this._universe = universe;
-    this.id = nextId;
-    nextId++;
+    if (id) {this.id = id} else this.id = uuidv4();
     if (
       Fixture.validateDmxArray(dmxChannels, universe) &&
       dmxChannels.length == definitions[type].dmx.length

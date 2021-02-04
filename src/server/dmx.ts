@@ -71,9 +71,9 @@ class Dmx extends EventEmitter {
     super();
   }
 
-  setValues(changes: dmxChange[], duration?: number, fixtureId?: number) {
-    if (!fixtureId) fixtureId = -1;
-    let changedFixtureIds: number[] = [];
+  setValues(changes: dmxChange[], duration?: number, fixtureId?: string) {
+    if (!fixtureId) fixtureId = '';
+    let changedFixtureIds: string[] = [];
     let changedFixtures: import('./fixtures').default[] = [];
     let oldValues: dmxChange[] = [];
     for (let x = 0; x < changes.length; x++) {

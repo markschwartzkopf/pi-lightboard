@@ -13,7 +13,7 @@ function processApiCmd(msg, ws) {
             ws.setValue(msg.index, msg.value);
             return {
                 type: 'info',
-                data: 'Command acknowleged',
+                data: 'Command acknowledged',
             };
             break;
         case 'setFaderBank':
@@ -21,6 +21,15 @@ function processApiCmd(msg, ws) {
             return {
                 type: 'drawFaders',
                 data: ws.clientFaders,
+            };
+            break;
+        case 'select':
+            let { command, ...selectCommand } = msg;
+            ws.select(selectCommand);
+            //console.log(msg.number + ' ' + msg.operation + ' reset: ' + msg.reset);
+            return {
+                type: 'info',
+                data: 'Command acknowledged',
             };
             break;
         default:

@@ -1,5 +1,11 @@
 "use strict";
 let faders = [];
+let mouseDown = false;
+let selected = {
+    faders: [],
+    selected: [],
+};
+let currentSelection = { operation: 'selected', type: 'faders', start: -1, end: -1 };
 //fix button display
 let dmxButton = document.getElementById('dmx-format');
 let fixturesButton = document.getElementById('fixtures-format');
@@ -21,6 +27,10 @@ function setFaderHeight() {
 }
 setFaderHeight();
 window.onorientationchange = setFaderHeight;
+window.onmouseup = (e) => {
+    if (e.button == 0)
+        mouseDown = false;
+};
 const socket = new WebSocket('ws://' + window.location.host);
 socket.onopen = () => {
     socket.onmessage = (msgJSON) => {
@@ -60,26 +70,25 @@ function drawFaders(newFaders) {
         val.id = 'val-' + x;
         val.value = String(Math.round(faders[x].value));
         val.className = 'val';
-        val.style.gridColumn = column;
-        val.style.gridRow = '1/2';
-        /* val.onkeyup = (ev) => {
-          if (ev.keyCode == 13) {
-            let [element, type, numString] = val.id.split('-') as [
-              'val' | 'fader',
-              faderType,
-              string
-            ];
-            let number = parseInt(numString) / 255;
-            processInput(element, type, number, parseFloat(val.value));
-          }
-          if (ev.keyCode == 27) {
-            resetElement(val.id);
-          }
-        }; */
+        val.onkeyup = (ev) => {
+            if (ev.keyCode == 13) {
+                processInput(val);
+            }
+            if (ev.keyCode == 27) {
+                resetElement(val.id);
+            }
+        };
         /* val.onblur = () => {
           resetElement(val.id);
         }; */
-        grd.appendChild(val);
+        let div = document.createElement('div');
+        div.className = 'val-label-div';
+        div.style.gridColumn = column;
+        div.style.gridRow = '1/2';
+        if (faders[x].selected)
+            div.style.backgroundColor = 'var(--selected-color)';
+        div.appendChild(val);
+        grd.appendChild(div);
         let fader = document.createElement('input');
         fader.id = 'fader-' + x;
         fader.setAttribute('type', 'range');
@@ -88,15 +97,6 @@ function drawFaders(newFaders) {
         fader.max = String(range.max);
         fader.step = String(range.step);
         fader.value = String(faders[x].value);
-        console.log(x +
-            ' min:' +
-            range.min +
-            ' max:' +
-            range.max +
-            ' step:' +
-            range.step +
-            ' value:' +
-            faders[x].value);
         fader.style.width = 'var(--fader-height)'; //swapped because of 270deg rotation
         fader.style.height = 'var(--fader-width)'; //swapped because of 270deg rotation
         fader.oninput = (ev) => {
@@ -108,39 +108,36 @@ function drawFaders(newFaders) {
         fader.onmouseup = () => {
             fader.blur();
         };
-        let div = document.createElement('div');
+        div = document.createElement('div');
+        div.className = 'faderdiv';
         div.style.gridColumn = column;
-        div.style.gridRow = '2/3';
-        div.style.height = 'var(--fader-height)';
-        div.style.width = 'var(--fader-width)';
+        if (faders[x].selected)
+            div.style.backgroundColor = 'var(--selected-color)';
         div.appendChild(fader);
         grd.appendChild(div);
-        div = document.createElement('div');
-        div.id = 'label-' + x;
+        let label = document.createElement('div');
+        label.id = 'label-' + x;
         let p = document.createElement('p');
         p.innerHTML = faders[x].label;
-        div.appendChild(p);
+        label.appendChild(p);
         if (faders[x].fader.subLabel1) {
-            div.appendChild(document.createElement('br'));
+            label.appendChild(document.createElement('br'));
             p = document.createElement('p');
-            p.style.color = 'green';
+            p.style.color = 'var(--sub-label-1)';
             p.innerHTML = faders[x].fader.subLabel1;
-            div.appendChild(p);
+            label.appendChild(p);
         }
         if (faders[x].fader.subLabel2) {
-            div.appendChild(document.createElement('br'));
+            label.appendChild(document.createElement('br'));
             p = document.createElement('p');
-            p.style.color = 'blue';
+            p.style.color = 'var(--sub-label-2)';
             p.innerHTML = faders[x].fader.subLabel2;
-            div.appendChild(p);
+            label.appendChild(p);
         }
-        //div.innerHTML = faders[x].label; //add sub labels
-        div.className = 'fader-label';
-        div.style.gridColumn = column;
-        div.style.gridRow = '3/4';
-        div.oncontextmenu = (e) => {
+        label.className = 'fader-label';
+        label.oncontextmenu = (e) => {
             e.preventDefault();
-            /* let [element, type, numString] = div.id.split('-') as [
+            /* let [element, type, numString] = label.id.split('-') as [
               'label',
               faderType,
               string
@@ -150,16 +147,66 @@ function drawFaders(newFaders) {
               sendToSocket({ command: 'getFixture', number: number });
             } */
         };
-        div.onmousedown = (e) => {
-            if (e.buttons == 1)
-                flash(div);
+        label.onmousedown = (e) => {
+            if (e.button == 0) {
+                e.preventDefault();
+                mouseDown = true;
+                let operation;
+                if (!isSelected('faders', x)) {
+                    operation = 'selected';
+                }
+                else
+                    operation = 'deselected';
+                currentSelection = {
+                    operation: operation,
+                    type: 'faders',
+                    start: x,
+                    end: x,
+                };
+                select({
+                    number: x,
+                    type: 'faders',
+                    operation: operation,
+                    reset: true,
+                });
+            }
         };
-        div.onmouseup = () => {
-            flash(div, 'off');
+        label.onmousemove = (e) => {
+            e.preventDefault();
         };
-        div.onmouseleave = () => {
-            flash(div, 'off');
+        label.onmouseover = (e) => {
+            if (mouseDown) {
+                let oldEnd = currentSelection.end;
+                currentSelection.end = x;
+                switch (isBetween(x, currentSelection.start, oldEnd)) {
+                    case 'atEnd':
+                        return;
+                    case 'between':
+                        multiSelect('faders', x, oldEnd, currentSelection.operation, true);
+                        break;
+                    case 'beyond':
+                        multiSelect('faders', oldEnd, x, currentSelection.operation);
+                        break;
+                    case 'reverse':
+                        multiSelect('faders', currentSelection.start, oldEnd, currentSelection.operation, true);
+                        multiSelect('faders', currentSelection.start, x, currentSelection.operation);
+                        break;
+                }
+            }
         };
+        label.onmouseup = () => {
+            flash(label, 'off');
+        };
+        label.onmouseleave = () => {
+            flash(label, 'off');
+        };
+        div = document.createElement('div');
+        div.className = 'val-label-div';
+        div.style.gridColumn = column;
+        div.style.gridRow = '3/4';
+        if (faders[x].selected)
+            div.style.backgroundColor = 'var(--selected-color)';
+        div.appendChild(label);
         grd.appendChild(div);
     }
     //
@@ -172,10 +219,10 @@ function flash(div, off) {
     div.style.backgroundColor = bgcolor;
 }
 function processDataFromServer(msg) {
-    console.log(msg);
     switch (msg.type) {
         case 'info':
-            console.log(msg);
+            if (msg.data != 'Command acknowledged')
+                console.log('info: ' + JSON.stringify(msg.data));
             break;
         case 'drawFaders':
             faders = msg.data;
@@ -232,8 +279,8 @@ function processInput(element) {
     let val = document.getElementById(valId);
     let range = getFaderRange(faders[faderIndex].fader);
     if ((!value && value != 0) || value < range.min || value > range.max) {
+        console.error('bad input: ' + element.value);
         resetElement(valId);
-        console.error('bad input: ' + value);
     }
     else {
         sendToSocket({
@@ -268,14 +315,12 @@ function getFaderRange(fader) {
     }
 }
 function resetElement(id) {
-    let [element, type, numString] = id.split('-');
-    console.error('code resetElement');
-    return;
+    let [type, numString] = id.split('-');
     let number = parseInt(numString);
-    switch (element) {
+    switch (type) {
         case 'val':
             let val = document.getElementById(id);
-            //val.value = Math.round(values[type][number] * 255).toString();
+            val.value = faders[number].value.toString();
             break;
         case 'fader':
             console.error('code me');
@@ -284,6 +329,103 @@ function resetElement(id) {
             console.error('code me');
             break;
     }
+}
+function select(cmd) {
+    sendToSocket(Object.assign({ command: 'select' }, cmd));
+    selectIndicate(cmd);
+    let itemSelected = false;
+    if (cmd.operation == 'selected')
+        itemSelected = true;
+    if (cmd.reset)
+        selected = { faders: [], selected: [] };
+    if (itemSelected && !isSelected(cmd.type, cmd.number)) {
+        selected[cmd.type].push(cmd.number);
+    }
+    if (!itemSelected && isSelected(cmd.type, cmd.number)) {
+        selected[cmd.type].splice(selected[cmd.type].indexOf(cmd.number), 1);
+    }
+}
+function selectIndicate(cmd) {
+    if (cmd.reset) {
+        for (let x = 0; x < selected.faders.length; x++) {
+            selectIndicate({
+                number: selected.faders[x],
+                type: 'faders',
+                operation: 'deselected',
+                reset: false,
+            });
+        }
+        for (let x = 0; x < selected.selected.length; x++) {
+            selectIndicate({
+                number: selected.selected[x],
+                type: 'selected',
+                operation: 'deselected',
+                reset: false,
+            });
+        }
+    }
+    let color = 'var(--selected-color)';
+    if (cmd.operation == 'deselected')
+        color = '';
+    switch (cmd.type) {
+        case 'faders':
+            let val = document.getElementById('val-' + cmd.number).parentElement;
+            let fader = document.getElementById('fader-' + cmd.number)
+                .parentElement;
+            let label = document.getElementById('label-' + cmd.number)
+                .parentElement;
+            val.style.backgroundColor = color;
+            fader.style.backgroundColor = color;
+            label.style.backgroundColor = color;
+            break;
+        case 'selected':
+            console.log('code select fader background color change');
+            break;
+    }
+}
+function multiSelect(type, start, end, operation, reverse) {
+    if (reverse) {
+        if (operation == 'selected') {
+            operation = 'deselected';
+        }
+        else
+            operation = 'selected';
+    }
+    if (start == end)
+        return;
+    if (start > end) {
+        start--;
+    }
+    else
+        start++; //do not include start;
+    let min = Math.min(start, end);
+    let max = Math.max(start, end);
+    for (let x = min; x <= max; x++) {
+        select({ number: x, type: type, operation: operation, reset: false });
+    }
+}
+function isSelected(type, number) {
+    if (selected[type].indexOf(number) == -1) {
+        return false;
+    }
+    else
+        return true;
+}
+function isBetween(x, bound1, bound2) {
+    let min = Math.min(bound1, bound2);
+    let max = Math.max(bound1, bound2);
+    if (x == bound2) {
+        return 'atEnd';
+    }
+    else if ((x > min && x < max) || (x == bound1 && bound1 != bound2)) {
+        return 'between';
+    }
+    else if ((bound2 >= bound1 && x > bound2) ||
+        (bound1 >= bound2 && x < bound2)) {
+        return 'beyond';
+    }
+    else
+        return 'reverse';
 }
 //testing code
 //let test = document.getElementById('test')!;
