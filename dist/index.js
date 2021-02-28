@@ -20,4 +20,3 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Promise.resolve().then(() => __importStar(require('./server')));
 Promise.resolve().then(() => __importStar(require('./global')));
-Promise.resolve().then(() => __importStar(require('./lightboard')));

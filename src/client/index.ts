@@ -1,4 +1,3 @@
-let faders: faderData[] = [];
 let mouseDown = false;
 let selected: { faders: number[]; selected: number[] } = {
   faders: [],
@@ -10,12 +9,19 @@ let currentSelection: {
   start: number;
   end: number;
 } = { operation: 'selected', type: 'faders', start: -1, end: -1 };
-//fix button display
-let dmxButton = document.getElementById('dmx-format') as HTMLButtonElement;
-let fixturesButton = document.getElementById(
-  'fixtures-format'
-) as HTMLButtonElement;
+type viewLocation = 'primary' | 'secondary';
+let subscriptions: {
+  [key in viewLocation]: {
+    id: string;
+    view: number;
+    controls: controlInterface[];
+  } | null;
+} = {
+  primary: null,
+  secondary: null,
+};
 
+let userNavButtons: userNavButton[] = [];
 function setFaderHeight() {
   const root = document.documentElement;
   root.style.fontSize = window.devicePixelRatio * 20 + 'px';
@@ -60,97 +66,175 @@ function sendToSocket(msg: clientMsg) {
   socket.send(JSON.stringify(msg));
 }
 
-dmxButton.onclick = () => {
-  sendToSocket({ command: 'setFaderBank', bank: 'dmx' });
-};
+function updateView(divId: viewLocation, update: clientViewUpdate): void {
+  for (let x = 0; x < update.controls.length; x++) {
+    let index = update.controls[x].index;
+    subscriptions[divId]!.controls[index].value = update.controls[x].value;
+    let valDiv1 = document.getElementById(
+      'val-' + index + '-0'
+    ) as HTMLInputElement;
+    let valDiv2 = document.getElementById(
+      'val-' + index + '-1'
+    ) as HTMLInputElement;
+    let controlDiv = document.getElementById(
+      'control-' + index
+    ) as HTMLInputElement;
+    resetElement(valDiv1);
+    resetElement(valDiv2);
+    resetElement(controlDiv);
+  }
+}
 
-fixturesButton.onclick = () => {
-  sendToSocket({ command: 'setFaderBank', bank: 'fixtures' });
-};
-
-function drawFaders(newFaders: faderData[]): void {
-  faders = newFaders;
-  let grd = <HTMLDivElement>document.getElementById('grd')!;
+function populateView(divId: viewLocation, view: clientView): void {
+  let grd = <HTMLDivElement>document.getElementById(divId)!;
   grd.innerHTML = '';
-  grd.style.gridAutoColumns = 'var(--fader-width)';
-  grd.style.gridTemplateRows =
-    'var(--val-height) var(--fader-height) var(--name-height)';
+  for (let x = 0; x < view.controls.length; x++) {
+    subscriptions[divId]!.controls[x] = view.controls[x];
+    grd.appendChild(createValDiv(view.controls[x], x));
+    grd.appendChild(createControlDiv(view.controls[x], x));
+    grd.appendChild(createLabelDiv(view.controls[x], x));
+  }
+}
 
-  for (let x = 0; x < faders.length; x++) {
-    let column = x + 1 + '/' + (x + 2);
-    let val = document.createElement('input');
-    val.id = 'val-' + x;
-    val.value = String(Math.round(faders[x].value));
-    val.className = 'val';
-    val.onkeyup = (ev) => {
+function createValDiv(
+  control: controlInterface,
+  column: number
+): HTMLDivElement {
+  let valDiv = document.createElement('div');
+  valDiv.className = 'val-label-div';
+  valDiv.style.gridColumn = columnString(column);
+  valDiv.style.gridRow = '1/2';
+  let values = getValue(control);
+  for (let x = 0; x < values.length; x++) {
+    let valInput = document.createElement('input');
+    valInput.id = 'val-' + column + '-' + x;
+    valInput.value = values[x].value;
+    valInput.className = 'val';
+    valInput.onkeyup = (ev) => {
       if (ev.keyCode == 13) {
-        processInput(val);
+        processInput(valInput);
       }
       if (ev.keyCode == 27) {
-        resetElement(val.id);
+        resetElement(valInput);
       }
     };
-    /* val.onblur = () => {
-      resetElement(val.id);
-    }; */
-    let div = document.createElement('div');
-    div.className = 'val-label-div';
-    div.style.gridColumn = column;
-    div.style.gridRow = '1/2';
-    if (faders[x].selected) div.style.backgroundColor = 'var(--selected-color)';
-    div.appendChild(val);
-    grd.appendChild(div);
+    valInput.onblur = () => {
+      resetElement(valInput);
+    };
 
-    let fader = document.createElement('input');
-    fader.id = 'fader-' + x;
-    fader.setAttribute('type', 'range');
-    let range = getFaderRange(faders[x].fader);
-    fader.min = String(range.min);
-    fader.max = String(range.max);
-    fader.step = String(range.step);
-    fader.value = String(faders[x].value);
-    fader.style.width = 'var(--fader-height)'; //swapped because of 270deg rotation
-    fader.style.height = 'var(--fader-width)'; //swapped because of 270deg rotation
-    fader.oninput = (ev) => {
-      processInput(fader);
-    };
-    fader.onchange = () => {
-      fader.blur();
-    };
-    fader.onmouseup = () => {
-      fader.blur();
-    };
-    div = document.createElement('div');
-    div.className = 'faderdiv';
-    div.style.gridColumn = column;
-    if (faders[x].selected) div.style.backgroundColor = 'var(--selected-color)';
-    div.appendChild(fader);
-    grd.appendChild(div);
+    valDiv.appendChild(valInput);
+  }
+  console.error('fix create-val-selected');
+  //if (???) valDiv.style.backgroundColor = 'var(--selected-color)';
 
-    let label = document.createElement('div');
-    label.id = 'label-' + x;
+  return valDiv;
+}
+
+function getValue(
+  control: controlInterface
+): { label?: string; value: string }[] {
+  switch (control.type) {
+    case 'range':
+      return [{ value: Math.round(control.value * 100).toString() + '%' }];
+      break;
+    case 'enum':
+      console.error('code me');
+      break;
+    case 'loop':
+      console.error('code me');
+      break;
+    case 'color':
+      console.error('code me');
+      break;
+    case 'colorEnum':
+      console.error('code me');
+      break;
+  }
+  return [{ value: 'Code Me!' }];
+}
+
+function createControlDiv(
+  control: controlInterface,
+  column: number
+): HTMLDivElement {
+  let controlDiv = document.createElement('div');
+  controlDiv.className = 'faderdiv';
+  controlDiv.style.gridColumn = columnString(column);
+  switch (control.type) {
+    case 'range':
+      let fader = document.createElement('input');
+      fader.id = 'control-' + column;
+      fader.setAttribute('type', 'range');
+      fader.min = '0';
+      fader.max = '1';
+      fader.step = '.000001';
+      fader.value = control.value.toString();
+      fader.style.width = 'var(--fader-height)'; //swapped because of 270deg rotation
+      fader.style.height = 'var(--fader-width)'; //swapped because of 270deg rotation
+      fader.oninput = (ev) => {
+        processInput(fader);
+      };
+      fader.onchange = () => {
+        fader.blur();
+      };
+      fader.onmouseup = () => {
+        fader.blur();
+      };
+      controlDiv.appendChild(fader);
+      break;
+    case 'enum':
+      console.error('code me');
+      break;
+    case 'loop':
+      console.error('code me');
+      break;
+    case 'color':
+      console.error('code me');
+      break;
+    case 'colorEnum':
+      console.error('code me');
+      break;
+  }
+  console.error('fix create-control-selected');
+  //if (???) controlDiv.style.backgroundColor = 'var(--selected-color)';
+  return controlDiv;
+}
+
+function createLabelDiv(
+  control: controlInterface,
+  column: number
+): HTMLDivElement {
+  let labelDivDiv = document.createElement('div');
+  labelDivDiv.className = 'val-label-div';
+  labelDivDiv.style.gridColumn = columnString(column);
+  labelDivDiv.style.gridRow = '3/4';
+  let labelDiv = document.createElement('div');
+  labelDiv.id = 'label-' + column;
+  labelDiv.className = 'control-label';
+  if (control.label1) {
     let p = document.createElement('p');
-    p.innerHTML = faders[x].label;
-    label.appendChild(p);
-    if (faders[x].fader.subLabel1) {
-      label.appendChild(document.createElement('br'));
-      p = document.createElement('p');
-      p.style.color = 'var(--sub-label-1)';
-      p.innerHTML = faders[x].fader.subLabel1!;
-      label.appendChild(p);
-    }
-    if (faders[x].fader.subLabel2) {
-      label.appendChild(document.createElement('br'));
-      p = document.createElement('p');
-      p.style.color = 'var(--sub-label-2)';
-      p.innerHTML = faders[x].fader.subLabel2!;
-      label.appendChild(p);
-    }
+    p.innerHTML = control.label1;
+    labelDiv.appendChild(p);
+  }
+  if (control.label2) {
+    if (control.label1) labelDiv.appendChild(document.createElement('br'));
+    let p = document.createElement('p');
+    p.style.color = 'var(--label-2)';
+    p.innerHTML = control.label2;
+    labelDiv.appendChild(p);
+  }
+  if (control.label3) {
+    if (control.label2 || control.label1)
+      labelDiv.appendChild(document.createElement('br'));
+    let p = document.createElement('p');
+    p.style.color = 'var(--label-3)';
+    p.innerHTML = control.label3;
+    labelDiv.appendChild(p);
+  }
 
-    label.className = 'fader-label';
-    label.oncontextmenu = (e) => {
-      e.preventDefault();
-      /* let [element, type, numString] = label.id.split('-') as [
+  labelDiv.oncontextmenu = (e) => {
+    e.preventDefault();
+    /* let [element, type, numString] = label.id.split('-') as [
         'label',
         faderType,
         string
@@ -159,79 +243,77 @@ function drawFaders(newFaders: faderData[]): void {
         let number = parseInt(numString);
         sendToSocket({ command: 'getFixture', number: number });
       } */
-    };
-    label.onmousedown = (e) => {
-      if (e.button == 0) {
-        e.preventDefault();
-        mouseDown = true;
-        let operation: 'selected' | 'deselected';
-        if (!isSelected('faders', x)) {
-          operation = 'selected';
-        } else operation = 'deselected';
-        currentSelection = {
-          operation: operation,
-          type: 'faders',
-          start: x,
-          end: x,
-        };
-        select({
-          number: x,
-          type: 'faders',
-          operation: operation,
-          reset: true,
-        });
-      }
-    };
-    label.onmousemove = (e) => {
+  };
+  labelDiv.onmousedown = (e) => {
+    if (e.button == 0) {
       e.preventDefault();
-    };
-    label.onmouseover = (e) => {
-      if (mouseDown) {
-        let oldEnd = currentSelection.end;
-        currentSelection.end = x;
-        switch (isBetween(x, currentSelection.start, oldEnd)) {
-          case 'atEnd':
-            return;
-          case 'between':
-            multiSelect('faders', x, oldEnd, currentSelection.operation, true);
-            break;
-          case 'beyond':
-            multiSelect('faders', oldEnd, x, currentSelection.operation);
-            break;
-          case 'reverse':
-            multiSelect(
-              'faders',
-              currentSelection.start,
-              oldEnd,
-              currentSelection.operation,
-              true
-            );
-            multiSelect(
-              'faders',
-              currentSelection.start,
-              x,
-              currentSelection.operation
-            );
-            break;
-        }
-      }
-    };
-    label.onmouseup = () => {
-      flash(label, 'off');
-    };
-    label.onmouseleave = () => {
-      flash(label, 'off');
-    };
+      mouseDown = true;
+      let operation: 'selected' | 'deselected';
+      /* if (!isSelected('faders', x)) {
+        operation = 'selected';
+      } else operation = 'deselected';
+      currentSelection = {
+        operation: operation,
+        type: 'faders',
+        start: x,
+        end: x,
+      };
+      select({
+        number: x,
+        type: 'faders',
+        operation: operation,
+        reset: true,
+      }); */
+    }
+  };
+  labelDiv.onmousemove = (e) => {
+    e.preventDefault();
+  };
+  labelDiv.onmouseover = (e) => {
+    if (mouseDown) {
+      let oldEnd = currentSelection.end;
+      /* currentSelection.end = x;
+      switch (isBetween(x, currentSelection.start, oldEnd)) {
+        case 'atEnd':
+          return;
+        case 'between':
+          multiSelect('faders', x, oldEnd, currentSelection.operation, true);
+          break;
+        case 'beyond':
+          multiSelect('faders', oldEnd, x, currentSelection.operation);
+          break;
+        case 'reverse':
+          multiSelect(
+            'faders',
+            currentSelection.start,
+            oldEnd,
+            currentSelection.operation,
+            true
+          );
+          multiSelect(
+            'faders',
+            currentSelection.start,
+            x,
+            currentSelection.operation
+          );
+          break;
+      } */
+    }
+  };
+  labelDiv.onmouseup = () => {
+    flash(labelDiv, 'off');
+  };
+  labelDiv.onmouseleave = () => {
+    flash(labelDiv, 'off');
+  };
 
-    div = document.createElement('div');
-    div.className = 'val-label-div';
-    div.style.gridColumn = column;
-    div.style.gridRow = '3/4';
-    if (faders[x].selected) div.style.backgroundColor = 'var(--selected-color)';
-    div.appendChild(label);
-    grd.appendChild(div);
-  }
-  //
+  labelDivDiv.appendChild(labelDiv);
+  //if (faders[x].selected) labelDivDiv.style.backgroundColor = 'var(--selected-color)';
+  return labelDivDiv;
+}
+
+function columnString(column: number): string {
+  return column + 1 + '/' + (column + 2);
 }
 
 function flash(div: HTMLDivElement, off?: 'off') {
@@ -242,30 +324,63 @@ function flash(div: HTMLDivElement, off?: 'off') {
   div.style.backgroundColor = bgcolor;
 }
 
+function updateButtons(buttons: userNavButton[]) {
+  userNavButtons = buttons;
+  let buttonDiv = document.getElementById('buttons')!;
+  buttonDiv.innerHTML = '';
+  for (let x = 0; x < userNavButtons.length; x++) {
+    let button = document.createElement('span');
+    button.className = 'nav-button';
+    button.innerHTML = userNavButtons[x].label;
+    button.id = 'nav-btn-' + x;
+    buttonDiv.appendChild(button);
+    button.oncontextmenu = (e) => {
+      e.preventDefault();
+    };
+    button.onclick = (e) => {
+      switch (e.button) {
+        case 0:
+          subscribe(userNavButtons[x].id, 'primary');
+          break;
+      }
+    };
+  }
+}
+
 function processDataFromServer(msg: serverMsg) {
   switch (msg.type) {
     case 'info':
       if (msg.data != 'Command acknowledged')
         console.log('info: ' + JSON.stringify(msg.data));
       break;
-    case 'drawFaders':
-      faders = msg.data;
-      drawFaders(msg.data);
+    case 'userNavButtons':
+      updateButtons(msg.data);
+      if (subscriptions.primary == null)
+        subscribe(userNavButtons[0].id, 'primary');
       break;
-    case 'updateFaders':
-      for (let x = 0; x < msg.data.length; x++) {
-        faders[msg.data[x].index].value = msg.data[x].value;
-        let faderElement = document.getElementById(
-          'fader-' + msg.data[x].index
-        ) as HTMLInputElement;
-        let valElement = document.getElementById(
-          'val-' + msg.data[x].index
-        ) as HTMLInputElement;
-        if (document.activeElement != faderElement) {
-          faderElement.value = msg.data[x].value.toString();
+    case 'controlView':
+      let locations = Object.getOwnPropertyNames(
+        subscriptions
+      ) as viewLocation[];
+      for (let x = 0; x < locations.length; x++) {
+        if (
+          subscriptions[locations[x]]?.id == msg.data.id &&
+          subscriptions[locations[x]]?.view == msg.data.view
+        ) {
+          populateView(locations[x], msg.data);
         }
-        if (document.activeElement != valElement) {
-          valElement.value = msg.data[x].value.toString(); //fix this for enums
+      }
+      break;
+    case 'controlViewUpdate':
+      let locations2 = Object.getOwnPropertyNames(
+        subscriptions
+      ) as viewLocation[];
+      for (let x = 0; x < locations2.length; x++) {
+        if (
+          subscriptions[locations2[x]]?.id == msg.data.id &&
+          subscriptions[locations2[x]]?.view == msg.data.view
+        ) {
+          updateView(locations2[x], msg.data);
         }
       }
       break;
@@ -277,89 +392,105 @@ function processDataFromServer(msg: serverMsg) {
   }
 }
 
-/* function onValues(newValues: number[], type: faderType) {
-  for (let x = 0; x < onScreenFaders.length; x++) {
-    let fader = onScreenFaders[x];
-    if (
-      fader.type == type &&
-      newValues[fader.number] != values[type][fader.number]
-    ) {
-      let faderElement = document.getElementById(
-        'fader-' + type + '-' + fader.number
-      ) as HTMLInputElement;
-      let valElement = document.getElementById(
-        'val-' + type + '-' + fader.number
-      ) as HTMLInputElement;
-      if (document.activeElement != faderElement) {
-        faderElement.value = newValues[fader.number].toString();
-      }
-      if (document.activeElement != valElement)
-        valElement.value = Math.round(newValues[fader.number] * 255).toString();
-    }
+function subscribe(id: string, location: viewLocation, view?: number) {
+  if (!view) view = 0;
+  let [currentId, currentView] = [
+    subscriptions[location]?.id,
+    subscriptions[location]?.view,
+  ];
+  if (currentId != id || currentView != view) {
+    if (currentId != undefined && currentView != undefined)
+      sendToSocket({
+        command: 'unsubscribe',
+        id: currentId,
+        view: currentView,
+      });
+    subscriptions[location] = { id: id, view: view, controls: [] };
+    sendToSocket({ command: 'subscribe', id: id, view: view });
   }
-} */
+}
 
 function processInput(element: HTMLInputElement) {
-  let [elementType, numString] = element.id.split('-') as [
-    'val' | 'fader',
-    string
+  let location = element.parentElement!.parentElement!.id as viewLocation;
+  let [HTMLElementType, ...numString] = element.id.split('-') as [
+    'val' | 'control',
+    ...string[]
   ];
-  let faderIndex = parseInt(numString);
-  let value = parseFloat(element.value); //unless enum
-  let faderId = 'fader-' + faderIndex.toString();
-  let fader = document.getElementById(faderId)! as HTMLInputElement;
-  let valId = 'val-' + faderIndex.toString();
-  let val = document.getElementById(valId)! as HTMLInputElement;
-  let range = getFaderRange(faders[faderIndex].fader);
-  if ((!value && value != 0) || value < range.min || value > range.max) {
-    console.error('bad input: ' + element.value);
-    resetElement(valId);
-  } else {
-    sendToSocket({
-      command: 'setValue',
-      index: faderIndex,
-      value: value,
-    });
-    switch (elementType) {
-      case 'val':
-        fader.value = value.toString();
-        break;
-      case 'fader':
-        val.value = value.toString();
-        break;
-      default:
-        console.error('bad element type');
-        return;
-    }
+
+  let controlIndex = parseInt(numString[0]);
+  let controlInterface = subscriptions[location]!.controls[controlIndex];
+  if (!controlInterface) {
+    console.error('HTML control with no subsctiption');
+    return;
   }
+  switch (HTMLElementType) {
+    case 'val':
+      switch (controlInterface.type) {
+        case 'range':
+          let valueCandidate = parseFloat(element.value) / 100;
+          if (valueCandidate <= 1 && valueCandidate >= 0)
+            controlInterface.value = valueCandidate;
+          break;
+      }
+      resetElement(
+        document.getElementById(
+          'val-' + controlIndex + '-0'
+        ) as HTMLInputElement
+      );
+      resetElement(
+        document.getElementById('control-' + controlIndex) as HTMLInputElement
+      );
+      break;
+    case 'control':
+      switch (controlInterface.type) {
+        case 'range':
+          controlInterface.value = parseFloat(element.value);
+          break;
+      }
+      resetElement(
+        document.getElementById(
+          'val-' + controlIndex + '-0'
+        ) as HTMLInputElement
+      );
+      break;
+  }
+  sendToSocket({
+    command: 'setValue',
+    id: subscriptions[location]!.id,
+    view: subscriptions[location]!.view,
+    controlIndex: controlIndex,
+    value: controlInterface.value,
+  });
 }
 
-function getFaderRange(
-  fader: fader
-): { min: number; max: number; step: number } {
-  switch (fader.type) {
-    case 'range':
-      let range = fader as rangeFader;
-      return { min: range.min, max: range.max, step: range.step };
-    case 'enum':
-      let enumf = fader as enumFader;
-      return { min: 0, max: enumf.values.length - 1, step: 1 };
-    default:
-      console.error('Bad faders data in processInput');
-      return { min: -1, max: -1, step: -1 };
+function resetElement(element: HTMLInputElement | null) {
+  if (!element) return;
+  let location = element.parentElement!.parentElement!.id as viewLocation;
+  let [type, ...numStrings] = element.id.split('-') as [
+    'val' | 'control' | 'label',
+    ...string[]
+  ];
+  let controlIndex = parseInt(numStrings[0]);
+  let controlInterface = subscriptions[location]?.controls[controlIndex];
+  if (!controlInterface) {
+    console.error('HTML control with no subsctiption');
+    return;
   }
-}
-
-function resetElement(id: string) {
-  let [type, numString] = id.split('-') as ['val' | 'fader' | 'label', string];
-  let number = parseInt(numString);
   switch (type) {
     case 'val':
-      let val = document.getElementById(id) as HTMLInputElement;
-      val.value = faders[number].value.toString();
+      switch (controlInterface.type) {
+        case 'range':
+          element.value =
+            Math.round(controlInterface.value * 100).toString() + '%';
+          break;
+      }
       break;
-    case 'fader':
-      console.error('code me');
+    case 'control':
+      switch (controlInterface.type) {
+        case 'range':
+          element.value = controlInterface.value.toString();
+          break;
+      }
       break;
     case 'label':
       console.error('code me');
@@ -368,7 +499,7 @@ function resetElement(id: string) {
 }
 
 function select(cmd: selectCommand) {
-  sendToSocket({command: 'select', ...cmd});
+  sendToSocket({ command: 'select', ...cmd });
   selectIndicate(cmd);
   let itemSelected = false;
   if (cmd.operation == 'selected') itemSelected = true;
@@ -406,7 +537,7 @@ function selectIndicate(cmd: selectCommand) {
   switch (cmd.type) {
     case 'faders':
       let val = document.getElementById('val-' + cmd.number)!.parentElement!;
-      let fader = document.getElementById('fader-' + cmd.number)!
+      let fader = document.getElementById('control-' + cmd.number)!
         .parentElement!;
       let label = document.getElementById('label-' + cmd.number)!
         .parentElement!;

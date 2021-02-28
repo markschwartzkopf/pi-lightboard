@@ -8,114 +8,33 @@
         --r3: 255;
         --g3: 147;
         --b3: 41; */
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const basicRGB_1 = __importDefault(require("./fixtureDefinitions/basicRGB"));
-const dmxFader = {
-    type: 'range',
-    min: 0,
-    max: 255,
-    step: 1,
-    loop: false
-};
+/* import basicRGB from './fixtureDefinitions/basicRGB'; */
 const definitions = {
-    basic: { dmx: [{ ...dmxFader, subLabel1: 'value' }] },
-    basicRGB: basicRGB_1.default
+    basic: {
+        dmx: 1,
+        dmxLabel: ['value'],
+        dmxLock: [false],
+        internalsFromDMX: (dmx) => {
+            return [dmx[0] / 255];
+        },
+        properties: [
+            {
+                controlInterface: { label2: 'value', type: 'range', value: 0 },
+                set: (internals, newVal) => {
+                    if (typeof newVal == 'number' && newVal >= 0 && newVal <= 1) {
+                        internals[0] = newVal;
+                        return [newVal * 255];
+                    }
+                    else
+                        return [-1];
+                },
+                get: (internals) => {
+                    return internals[0];
+                },
+            },
+        ],
+    },
 };
+//definitions.dmx = 
 exports.default = definitions;
-//functions for processing indirect properties to and from DMX:
-function rgbFromHsv(rgb, type, newVal) {
-    let hsv = rgbToHsv(rgb);
-    switch (type) {
-        case 'hue':
-            hsv[0] = newVal;
-            break;
-        case 'saturation':
-            hsv[1] = newVal;
-            break;
-        case 'value':
-            hsv[2] = newVal;
-            break;
-        default:
-            console.error('No such property name: ' + type);
-            return [-1, -1, -1];
-    }
-    return hsvToRgb(hsv);
-}
-function hsvFromRgb(rgb, type) {
-    let hsv = rgbToHsv(rgb);
-    switch (type) {
-        case 'hue':
-            return hsv[0];
-            break;
-        case 'saturation':
-            return hsv[1];
-            break;
-        case 'value':
-            return hsv[2];
-            break;
-        default:
-            return -1;
-    }
-}
-function hsvToRgb(hsv) {
-    let [h, s, v] = hsv;
-    let [r, g, b] = [-1, -1, -1];
-    let i = Math.floor(h * 6);
-    let f = h * 6 - i;
-    let p = v * (1 - s);
-    let q = v * (1 - f * s);
-    let t = v * (1 - (1 - f) * s);
-    switch (i % 6) {
-        case 0:
-            (r = v), (g = t), (b = p);
-            break;
-        case 1:
-            (r = q), (g = v), (b = p);
-            break;
-        case 2:
-            (r = p), (g = v), (b = t);
-            break;
-        case 3:
-            (r = p), (g = q), (b = v);
-            break;
-        case 4:
-            (r = t), (g = p), (b = v);
-            break;
-        case 5:
-            (r = v), (g = p), (b = q);
-            break;
-    }
-    return [r, g, b];
-}
-function rgbToHsv(rgb) {
-    let [r, g, b] = rgb;
-    let max = Math.max(r, g, b);
-    let min = Math.min(r, g, b);
-    let h, s, v = max;
-    let d = max - min;
-    s = max == 0 ? 0 : d / max;
-    if (max == min) {
-        h = 0; // achromatic
-    }
-    else {
-        switch (max) {
-            case r:
-                h = (g - b) / d + (g < b ? 6 : 0);
-                break;
-            case g:
-                h = (b - r) / d + 2;
-                break;
-            case b:
-                h = (r - g) / d + 4;
-                break;
-            default:
-                console.error('Error in rgbToHsv');
-                h = 0; //Should never happen
-        }
-        h /= 6;
-    }
-    return [h, s, v];
-}

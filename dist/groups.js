@@ -1,136 +1,180 @@
 'use strict';
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const events_1 = require("events");
-const global_1 = require("./global");
-const uuid_1 = require("uuid");
-class Group extends events_1.EventEmitter {
+const control_object_1 = __importDefault(require("./control-object"));
+let allGroups;
+class Group extends control_object_1.default {
     constructor(id) {
-        super();
+        super(id);
         this.members = [];
+        this.unSubs = {};
         this.excludes = [];
-        this.fixtures = [];
-        this.dmx = false;
-        this.adHoc = true;
-        if (id) {
-            this.id = id;
+        this.values = [];
+        this.type = 'group';
+        this.views = [
+            { label: 'Members', elements: [] },
+            { label: 'Properties', elements: [] },
+        ];
+        switch (this.id) {
+            case 'allDmx':
+                this.views.pop();
+                this.views[0].label = 'DMX';
+                break;
+            case 'allFixtures':
+                this.views.pop();
+                this.views[0].label = 'Fixtures';
+                break;
+            case 'allUserGroups':
+                this.views.pop();
+                this.views[0].label = 'Groups';
+                break;
+            default:
+                if (allGroups)
+                    allGroups.addMember(this);
+                break;
         }
-        else
-            this.id = uuid_1.v4();
     }
-    contains(fader) {
-        if (fader.type == 'empty')
-            return false;
-        let idList = this._getIdListByType(fader.type);
-        let faderId = '';
-        switch (fader.type) {
-            case 'dmx':
-                faderId = fader.channel.toString();
-                break;
-            case 'fixture':
-                faderId = fader.fixture.id;
-                break;
-            case 'group':
-                faderId = fader.group.id;
-                break;
+    /* getValue(valueName: string): number;
+    getValue(): { valueName: string; value: number }[];
+    getValue(
+      valueName?: string
+    ): number | { valueName: string; value: number }[] {
+      if (!valueName) {
+        let rtn: { valueName: string; value: number }[] = [];
+        //
+        return rtn;
+      }
+  
+      return -1;
+    }
+  
+    setValue(newVal: number, valueName?: string) {
+      if (!valueName) valueName = 'value';
+    }
+  
+    fader(valueName?: string): fader {
+      if (!valueName) valueName = 'value';
+      return { type: 'empty' };
+    }
+   */
+    //based upon old ideas:
+    /* initValues(): void {
+      this.values = [];
+      let keyIndex: { [valueName: string]: number } = {};
+      for (let x = 0; x < this.members.length; x++) {
+        let groupMember = this.members[x];
+        switch (groupMember.type) {
+          case 'fixture':
+            let values = groupMember.getValue();
+            for (let y = 0; y < values.length; y++) {
+              if (keyIndex[values[y].valueName] === undefined) {
+                keyIndex[values[y].valueName] = this.values.length;
+                this.values.push({
+                  valueName: values[y].valueName,
+                  current: NaN,
+                  start: NaN,
+                  members: [
+                    {
+                      member: { type: 'fixture', member: groupMember.member },
+                      startValue: values[y].value,
+                    },
+                  ],
+                });
+              } else {
+                this.values[keyIndex[values[y].valueName]].members.push({
+                  member: { type: 'fixture', member: groupMember.member },
+                  startValue: values[y].value,
+                });
+              }
+            }
+            break;
+          case 'group':
+            break;
         }
-        if (idList.indexOf(faderId) == -1) {
-            return false;
+      }
+      for (let x = 0; x < this.values.length; x++) {
+        let sum = 0;
+        for (let y = 0; y < this.values[x].members.length; y++) {
+          sum += this.values[x].members[y].startValue;
         }
-        else
-            return true;
+        this.values[x].start = sum / this.values[x].members.length;
+        this.values[x].current = this.values[x].start;
+      }
+      console.log(this.values);
+    } */
+    /* contains(fader: serverFader): boolean {
+      if (fader.type == 'empty') return false;
+      if (this.memberIds.indexOf(fader.member.id) == -1) {
+        return false;
+      } else return true;
+    } */
+    get memberIds() {
+        return this.members.map((x) => {
+            return x.id;
+        });
     }
     addMember(newMember) {
-        switch (newMember.type) {
-            case 'dmx':
-                if ((this.members.length > 0 && !this.dmx) || !this.adHoc) {
-                    console.error('Cannot add DMX member to non-DMX group');
-                }
-                else {
-                    let alreadyIn = this.members.some((x) => {
-                        let y = x;
-                        return y.channel == newMember.channel;
-                    });
-                    if (!alreadyIn) {
-                        this.members.push(newMember);
-                    }
-                    else {
-                        console.warn('Tried to re-add existing DMX into group');
-                    }
-                    if (!this.dmx) {
-                        global_1.dmx.on('change', (changes) => {
-                            //
-                            //code this
-                            //
-                        });
-                        this.dmx = true;
-                    }
-                }
-                break;
-            case 'fixture':
-                if (this.dmx) {
-                    console.error('Cannot add fixture to DMX group');
-                }
-                else {
-                    let alreadyIn = this.fixtures.some((x) => {
-                        return x.id == newMember.fixture.id;
-                    });
-                    if (!alreadyIn) {
-                        this.members.push(newMember);
-                        this.fixtures.push(newMember.fixture);
-                        newMember.fixture.on('change', (changes) => {
-                            //
-                            //code this
-                            //
-                        });
-                    }
-                    else {
-                        console.warn('Tried to re-add existing fixture into group');
-                    }
-                }
-                break;
-            case 'group':
-                console.error('Code adding groups to groups');
-                //check for loops
-                break;
-        }
-    }
-    _getIdListByType(type) {
-        let idList = [];
-        for (let x = 0; x < this.members.length; x++) {
-            let member = this.members[x];
-            if (member.type == type) {
-                switch (member.type) {
-                    case 'dmx':
-                        idList.push(member.channel.toString());
-                        break;
-                    case 'fixture':
-                        idList.push(member.fixture.id);
-                        break;
-                    case 'group':
-                        idList.push(member.group.id);
-                        break;
-                }
+        let alreadyIn = this.members.some((x) => {
+            return x.id == newMember.id;
+        });
+        if (!alreadyIn) {
+            this.members.push(newMember);
+            let memberViews = newMember.views.map((x) => {
+                return x.label;
+            });
+            let viewIndex = memberViews.indexOf('Properties');
+            if (viewIndex == -1) {
+                console.error('Added control object with no "Properties" view');
+                return;
             }
-            else
-                idList.push('');
+            let memberProperties = newMember.views[viewIndex].elements.map((x) => {
+                return x.controlInterface.label2;
+            });
+            let propertyIndex = memberProperties.indexOf('value');
+            if (propertyIndex == -1) {
+                console.error('Added control object with no "value" property: ' + newMember.id);
+                return;
+            }
+            let valueElement = newMember.views[viewIndex].elements[propertyIndex];
+            let controlInterface = JSON.parse(JSON.stringify(valueElement.controlInterface));
+            delete controlInterface.label2;
+            controlInterface.label1 = newMember.label;
+            this.views[0].elements.push({
+                setValue: valueElement.setValue,
+                getValue: () => { return valueElement.controlInterface.value; },
+                controlInterface: controlInterface,
+            });
+            let valueListener = (type, change) => {
+                switch (type) {
+                    case 'init':
+                        console.error('code group valueListener "init"');
+                        break;
+                    case 'update':
+                        let clientViewUpdate = change;
+                        for (let x = 0; x < clientViewUpdate.controls.length; x++) {
+                            if (clientViewUpdate.controls[x].index == propertyIndex)
+                                this.refreshViewValues(0);
+                            //
+                            //update properties
+                            //
+                        }
+                        break;
+                }
+            };
+            newMember.on(viewIndex.toString(), valueListener);
         }
-        return idList;
+        else {
+            console.warn('Tried to re-add existing fixture into group');
+        }
+        if (newMember.type == 'group') {
+            console.error('Code adding groups to groups');
+            //check for loops
+        }
     }
     removeMember(member) {
-        let idList = this._getIdListByType(member.type);
-        let memberId = '';
-        switch (member.type) {
-            case 'dmx':
-                memberId = member.channel.toString();
-                break;
-            case 'fixture':
-                memberId = member.fixture.id;
-                break;
-            case 'group':
-                memberId = member.group.id;
-                break;
-        }
-        let index = idList.indexOf(memberId);
+        let index = this.memberIds.indexOf(member.id);
         if (index > -1) {
             this.members.splice(index, 1);
             //
@@ -138,7 +182,12 @@ class Group extends events_1.EventEmitter {
             //
         }
         else
-            console.warn('Tried to remove already absent ' + member.type + ' in group (' + memberId + ')');
+            console.warn('Tried to remove already absent ' +
+                member.type +
+                ' in group (id: ' +
+                member.id +
+                ')');
     }
 }
+allGroups = new Group('allGroups');
 exports.default = Group;

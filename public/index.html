@@ -10,13 +10,13 @@
         --val-height: 2rem;
         --name-height: 4rem;
         --fader-height: 15rem;
-        --sub-label-1: green;
-        --sub-label-2: blue;
-        --selected-color:#ffffff4d;
+        --label-2: green;
+        --label-3: blue;
+        --selected-color: #ffffff4d;
       }
       body {
         background-color: #272727;
-        font-family: Arial, Helvetica, sans-serif;
+        font-family: Arial, Helvetica, sans-serif; /* cooper hewitt? */
         margin: 5px;
         /* overflow: hidden; */
       }
@@ -40,12 +40,12 @@
         justify-content: center;
         align-items: center;
       }
-      .faderdiv{
+      .faderdiv {
         grid-row: 2/3;
         height: var(--fader-height);
         width: var(--fader-width);
       }
-      .fader-label {
+      .control-label {
         width: calc(100% - 6px);
         height: calc(100% - 6px - 0.5rem);
         /* margin-top: 0.5rem; */
@@ -57,17 +57,22 @@
         overflow: hidden;
         cursor: default;
       }
-      #grd {
+      .controls {
         place-items: center center;
         width: calc(100vw - 10px); /* body margin * 2 */
         overflow-x: auto;
+        display: grid;
+        grid-auto-columns: var(--fader-width);
+        grid-template-rows: var(--val-height) var(--fader-height) var(
+            --name-height
+          );
       }
       input[type='text'] {
         -moz-appearance: none; /* older firefox */
         -webkit-appearance: none; /* safari, chrome, edge and ie mobile */
         appearance: none; /* rest */
       }
-      .empty-fader {
+      .empty-control {
         background-color: rgba(214, 214, 214, 0.5);
         --margin: 2px;
         margin: var(--margin);
@@ -75,16 +80,27 @@
         height: calc(100% - (2 * var(--margin)));
         border-radius: calc(var(--fader-height) / 50);
       }
+      .nav-button {
+        background-color: black;
+        color: white;
+        margin: 0.1rem;
+        padding: 0.3rem;
+        border: 0.1rem solid lightgray;
+        border-radius: 999rem;
+        cursor: default;
+      }
+      #buttons {
+        margin: .2rem
+      }
       /* body * {
         background-color: white;
       } */
     </style>
   </head>
   <body>
-    <div id="grd" style="display: grid"></div>
-    <br />
-    <button id="dmx-format">DMX</button>
-    <button id="fixtures-format">Fixtures</button>
+    <div id="primary" class="controls"></div>
+    <div id="buttons" style="display: flex;"></div>
+    <div id="secondary" class="controls"></div>
     <script src="index.js"></script>
   </body>
 </html>

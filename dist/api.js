@@ -5,26 +5,48 @@ function processApiCmd(msg, ws) {
     switch (msg.command) {
         case 'init':
             return {
-                type: 'drawFaders',
-                data: ws.clientFaders,
+                type: 'userNavButtons',
+                data: ws.userNavButtons,
             };
             break;
         case 'setValue':
-            ws.setValue(msg.index, msg.value);
-            return {
-                type: 'info',
-                data: 'Command acknowledged',
-            };
+            let setValueCommand;
+            {
+                let { command: string, ...theRest } = msg;
+                setValueCommand = theRest;
+            }
+            ws.setValue(setValueCommand);
+            return { type: 'info', data: 'Command acknowledged' };
             break;
-        case 'setFaderBank':
-            ws.faderInit(msg.bank);
-            return {
-                type: 'drawFaders',
-                data: ws.clientFaders,
-            };
+        case 'subscribe':
+            let subscribeCommand;
+            {
+                let { command: string, ...theRest } = msg;
+                subscribeCommand = theRest;
+            }
+            let clientView = ws.subscribe(subscribeCommand);
+            if (clientView == null)
+                return { type: 'error', data: 'No such control object' };
+            return { type: 'controlView', data: clientView };
+            break;
+        case 'unsubscribe':
+            let unsubscribeCommand;
+            {
+                let { command: string, ...theRest } = msg;
+                unsubscribeCommand = theRest;
+            }
+            if (ws.unsubscribe(unsubscribeCommand)) {
+                return { type: 'info', data: 'Command acknowledged' };
+            }
+            else
+                return { type: 'error', data: 'No such subscription' };
             break;
         case 'select':
-            let { command, ...selectCommand } = msg;
+            let selectCommand;
+            {
+                let { command: string, ...theRest } = msg;
+                selectCommand = theRest;
+            }
             ws.select(selectCommand);
             //console.log(msg.number + ' ' + msg.operation + ' reset: ' + msg.reset);
             return {
@@ -35,7 +57,7 @@ function processApiCmd(msg, ws) {
         default:
             console.error('Received bad command: ' + msg);
             return {
-                type: 'info',
+                type: 'error',
                 data: 'Invalid command received',
             };
     }

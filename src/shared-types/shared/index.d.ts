@@ -1,55 +1,85 @@
 type serverMsg =
   | { type: 'error'; data: string }
   | { type: 'info'; data: string }
-  | { type: 'drawFaders'; data: faderData[] }
-  | { type: 'updateFaders'; data: faderUpdate[] }
-  | { type: 'drawSelected'; data: any }
-  | { type: 'updateSelected'; data: any };
+  | {
+      type: 'controlView';
+      data: clientView;
+    }
+  | {
+      type: 'controlViewUpdate';
+      data: clientViewUpdate;
+    }
+  | { type: 'userNavButtons'; data: userNavButton[] };
 
+type userNavButton = { label: string; id: string };
 
-
-type faderUpdate = { index: number; value: number };
-type faderData = {
-  fader: fader;
-  value: number;
-  label: string;
-  selected?: true;
+type clientViewUpdate = {
+  controls: {index: number, value: interfaceValue}[];
+  id: string;
+  view: number;
 };
-type fader = rangeFader | enumFader | emptyFader;
 
-type rangeFader = {
-  type: 'range';
-  min: number;
-  max: number;
-  step: number;
-  loop: boolean;
-  subLabel1?: string;
-  subLabel2?: string;
+type clientView = {
+  controls: controlInterface[];
+  id: string;
+  view: number;
+  label?: string;
+  views?: string[];
 };
-type enumFader = {
+
+type controlInterface = {
+  label1?: string;
+  label2?: string;
+  label3?: string;
+  readonly?: 'true';
+} & (
+  | rangeInterface
+  | colorInterface
+  | enumInterface
+  | colorEnumInterface
+  | loopInterface
+);
+
+type rangeInterface = { type: 'range'; value: number };
+type colorInterface = {
+  type: 'color';
+  primaries?: [rgb, rgb, rgb];
+  value: { type: 'color'; hue: number; saturation: number };
+};
+type enumInterface = {
   type: 'enum';
-  values: string[];
-  subLabel1?: string;
-  subLabel2?: string;
+  strings?: string[];
+  value: { type: 'enum'; value: number };
 };
-type emptyFader = {
-  type: 'empty';
-  subLabel1?: string;
-  subLabel2?: string;
+type colorEnumInterface = {
+  type: 'colorEnum';
+  colors?: rgb[];
+  value: { type: 'color'; hue: number; saturation: number };
 };
+type loopInterface = {
+  type: 'loop';
+  value: { type: 'loop'; value: number };
+};
+
+type interfaceValue = controlInterface['value'];
+
+type rgb = [number, number, number];
 
 type clientMsg =
   | { command: 'init' }
-  | {
-      command: 'setValue';
-      index: number;
-      value: number;
-    }
-  | {
-      command: 'setFaderBank';
-      bank: faderBank;
-    }
+  | ({ command: 'setValue' } & setValueCommand)
+  | ({ command: 'subscribe' } & subscribeCommand)
+  | ({ command: 'unsubscribe' } & subscribeCommand)
   | ({ command: 'select' } & selectCommand);
+
+type setValueCommand = {
+  id: string;
+  view: number;
+  controlIndex: number;
+  value: interfaceValue;
+};
+
+type subscribeCommand = { id: string; view: number };
 
 type selectCommand = {
   number: number;
@@ -57,17 +87,3 @@ type selectCommand = {
   operation: 'selected' | 'deselected';
   reset: boolean;
 };
-
-type faderBank = 'dmx' | 'fixtures' | 'groups' | number;
-
-/* type lightboardUpdate =
-  | { type: 'dmxNames'; data: string[] }
-  | { type: 'other'; data: string }; */
-
-type fixtureProperties = {
-  fixture: number;
-  dmx: { property: string; value: number }[];
-  indirect: { property: string; value: number }[];
-};
-
-type fixtureType = 'basic' | 'basicRGB';

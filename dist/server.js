@@ -22,13 +22,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const global_1 = require("./global");
+const file_1 = require("./file");
+let blah = file_1.userNavButtons;
 const groups_1 = __importDefault(require("./groups"));
 const api = __importStar(require("./api"));
 // todo: switch to a more minimal html server
 const express_1 = __importDefault(require("express"));
 const app = express_1.default();
 const ws_1 = __importDefault(require("ws"));
+const fixtures_1 = __importDefault(require("./fixtures"));
 app.use(express_1.default.static(__dirname + '/../public', { index: 'index.html' }));
 const server = app.listen(80, () => console.log('Listening on port 80.'));
 const wss = new ws_1.default.Server({ server });
@@ -36,60 +38,46 @@ wss.on('connection', (ws, req) => {
     //first implement myWebSocket interface... there has to be a better way to do this and have TypeScript allow properties to be added to ws
     ws.isAlive = true;
     ws.ip = 'no ip given';
-    ws._faders = [];
+    ws.userNavButtons = file_1.userNavButtons;
     ws.removeSubscriptions = [];
-    ws.selection = new groups_1.default();
-    ws.select = (cmd) => (select(cmd, ws));
-    ws.setValue = (index, value) => {
-        setValue(index, value, ws._faders);
+    ws.selection = new groups_1.default('adHoc');
+    ws.select = (cmd) => select(cmd, ws);
+    ws.setValue = setValue;
+    ws.subscribe = (cmd) => {
+        let maybeControlObject = fixtures_1.default.getObjectById(cmd.id);
+        if (maybeControlObject == null)
+            return null;
+        let controlObject = maybeControlObject;
+        let viewListener = (type, change) => {
+            switch (type) {
+                case 'init':
+                    let clientView = change;
+                    ws.send(toClient({ type: 'controlView', data: clientView }));
+                    break;
+                case 'update':
+                    let clientViewUpdate = change;
+                    ws.send(toClient({ type: 'controlViewUpdate', data: clientViewUpdate }));
+                    break;
+            }
+        };
+        controlObject.on(cmd.view.toString(), viewListener);
+        let unsub = () => {
+            controlObject.removeListener(cmd.view.toString(), viewListener);
+        };
+        ws.removeSubscriptions.push({ id: cmd.id, view: cmd.view, unsub: unsub });
+        return controlObject.getView(cmd.view);
     };
-    ws.faderInit = (x) => {
-        faderInit(x, ws);
+    ws.unsubscribe = (cmd) => {
+        for (let x = 0; x < ws.removeSubscriptions.length; x++) {
+            let remover = ws.removeSubscriptions[x];
+            if (remover.id == cmd.id && remover.view == cmd.view) {
+                remover.unsub();
+                ws.removeSubscriptions.splice(x, 1);
+                return true;
+            }
+        }
+        return false;
     };
-    Object.defineProperty(ws, 'clientFaders', {
-        get: () => {
-            return ws._faders.map((x) => {
-                switch (x.type) {
-                    case 'dmx':
-                        let index = x.channel;
-                        let fader = {
-                            type: 'range',
-                            min: 0,
-                            max: 255,
-                            step: 1,
-                            loop: false,
-                        };
-                        if (global_1.dmx.claimed[index].fixture) {
-                            fader.subLabel1 = global_1.dmx.claimed[index].type;
-                            fader.subLabel2 = global_1.dmx.claimed[index].fixture.label;
-                        }
-                        return {
-                            fader: fader,
-                            value: global_1.dmx.getValue(index),
-                            label: index.toString(),
-                        };
-                        break;
-                    case 'fixture':
-                        return {
-                            fader: x.fixture.fader,
-                            value: x.fixture.getValue('value'),
-                            label: x.fixture.label,
-                        };
-                        break;
-                    case 'group':
-                        return {
-                            fader: { type: 'empty' },
-                            value: 0,
-                            label: 'code me'
-                        };
-                        break;
-                    case 'empty':
-                        console.error('code empty clientFader');
-                        return { fader: { type: 'empty' }, value: 0, label: '' };
-                }
-            });
-        },
-    });
     if (req.socket.remoteAddress) {
         ws.ip = req.socket.remoteAddress.replace(/^.*:/, '');
     }
@@ -110,26 +98,9 @@ wss.on('connection', (ws, req) => {
             console.log(e);
         }
     });
-    ws.dmxValuesUpdate = (changes) => {
-        let updates = [];
-        for (let x = 0; x < changes.length; x++) {
-            for (let y = 0; y < ws._faders.length; y++) {
-                let fader = ws._faders[y];
-                if (ws._faders[y].type == 'dmx' && fader.channel == changes[x].channel) {
-                    updates.push({ index: y, value: changes[x].value });
-                }
-            }
-        }
-        if (updates.length > 0) {
-            let updateMsg = { type: 'updateFaders', data: updates };
-            ws.send(JSON.stringify(updateMsg));
-        }
-    };
-    faderInit('dmx', ws);
-    //dmx!.on('change', ws.dmxValuesUpdate);
     ws.on('close', () => {
         for (let x = 0; x < ws.removeSubscriptions.length; x++) {
-            ws.removeSubscriptions[x]();
+            ws.removeSubscriptions[x].unsub();
         }
         console.log('Connection properly closed for: ' + ws.ip);
     });
@@ -156,81 +127,32 @@ wss.on('close', () => {
 });
 function select(cmd, ws) {
     if (cmd.reset) {
-        ws.selection = new groups_1.default();
+        ws.selection = new groups_1.default('adHoc');
         if (cmd.operation == 'deselected')
             return;
     }
-    switch (cmd.type) {
-        case 'faders':
-            let fader = ws._faders[cmd.number];
-            if (fader.type != 'empty') {
-                if (cmd.operation == 'selected') {
-                    ws.selection.addMember(fader);
-                }
-                else
-                    ws.selection.removeMember(fader);
-                console.log(ws.selection._getIdListByType('fixture'));
-            }
-            break;
-        case 'selected':
-            console.error('code select properties');
-            break;
-    }
+    /* switch (cmd.type) {
+      case 'faders':
+        let fader = ws._faders[cmd.number];
+        if (fader.type != 'empty') {
+          if (cmd.operation == 'selected') {
+            ws.selection.addMember(fader);
+          } else ws.selection.removeMember(fader);
+          console.log(ws.selection.memberIds);
+        }
+        break;
+      case 'selected':
+        console.error('code select properties');
+        break;
+    } */
 }
-function faderInit(type, ws) {
-    for (let x = 0; x < ws.removeSubscriptions.length; x++) {
-        ws.removeSubscriptions[x]();
-    }
-    global_1.dmx.on('change', ws.dmxValuesUpdate);
-    ws.removeSubscriptions[0] = () => {
-        global_1.dmx.removeListener('change', ws.dmxValuesUpdate);
-    };
-    ws._faders = [];
-    switch (type) {
-        case 'dmx':
-            ws._faders = global_1.dmx
-                .getValue()
-                .slice(1)
-                .map((x, index) => ({ type: 'dmx', channel: index + 1 })); //slice(1) and +1 offset
-            break;
-        case 'fixtures':
-            for (let x = 0; x < global_1.fixtures.all.length; x++) {
-                ws._faders.push({ type: 'fixture', fixture: global_1.fixtures.all[x] });
-                let xCopy = x;
-                let fixtureChangeCallback = (changes) => {
-                    for (let y = 0; y < changes.length; y++) {
-                        if (changes[y].valueName == 'value') {
-                            let updateMsg = {
-                                type: 'updateFaders',
-                                data: [{ index: xCopy, value: changes[y].value }],
-                            };
-                            ws.send(JSON.stringify(updateMsg));
-                        }
-                    }
-                };
-                global_1.fixtures.all[x].on('change', fixtureChangeCallback);
-                ws.removeSubscriptions.push(() => {
-                    global_1.fixtures.all[x].removeListener('change', fixtureChangeCallback);
-                });
-            }
-            break;
-        default:
-            console.error('code serverFader init type: ' + type);
-            break;
-    }
+function toClient(msg) {
+    //this function only exists as a type-enforced stringify
+    return JSON.stringify(msg);
 }
-function setValue(index, value, faders) {
-    switch (faders[index].type) {
-        case 'dmx':
-            let dmxFader = faders[index];
-            global_1.dmx.setValues([{ channel: dmxFader.channel, value: value }]);
-            break;
-        case 'fixture':
-            let fixtureFader = faders[index];
-            fixtureFader.fixture.setValue(value);
-            break;
-        case 'empty':
-            console.error('Cannot setValue for empty faders');
-            break;
-    }
+function setValue(cmd) {
+    let controlObject = groups_1.default.getObjectById(cmd.id);
+    if (controlObject == null)
+        return;
+    controlObject.views[cmd.view].elements[cmd.controlIndex].setValue(cmd.value);
 }

@@ -1,11 +1,4 @@
-const dmxFader: rangeFader = {
-  type: 'range',
-  min: 0,
-  max: 255,
-  step: 1,
-  loop: false
-};
-
+/* 
 export default {
   dmx: [{...dmxFader, subLabel1: 'red'}, {...dmxFader, subLabel1: 'blue'}, {...dmxFader, subLabel1: 'green'}],
   indirect: {
@@ -121,3 +114,4 @@ function rgbToHsv(rgb: number[]): [number, number, number] {
   }
   return [h, s, v];
 }
+ */
