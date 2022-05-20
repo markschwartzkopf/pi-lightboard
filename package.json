@@ -12,8 +12,8 @@
     "build": "npm-run-all -s build:*",
     "build:server": "node ./node_modules/typescript/bin/tsc -p ./src/server --diagnostics",
     "build:browser": "node ./node_modules/typescript/bin/tsc -p ./src/browser --diagnostics",
-    "build:copyhtml": "cpy \"**/*.html\" ../../dist/public/ --cwd=src/browser --parents",
-    "build:copycss": "cpy \"**/*.css\" ../../dist/public/ --cwd=src/browser --parents"
+    "build:copyhtml": "cpy \"src/browser/**/*.html\" \"dist/public/\" --parents",
+    "build:copycss": "cpy \"src/browser/**/*.css\" \"dist/public/\" --parents"
   },
   "author": "Mark Schwartzkopf",
   "license": "GPL-3.0",
