@@ -1,0 +1,1 @@
+type placeholderShared = symbol

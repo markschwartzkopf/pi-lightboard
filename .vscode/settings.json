@@ -1,0 +1,11 @@
+{
+  "prettier.singleQuote": true,
+  "prettier.tabWidth": 2,
+  "prettier.printWidth": 120,
+  "editor.detectIndentation": false,
+  "editor.tabSize": 2,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[xml]": {
+    "editor.defaultFormatter": "svipas.prettier-plus"
+  }
+}

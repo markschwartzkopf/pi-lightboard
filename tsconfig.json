@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "commonjs",
+    "noEmitOnError": true,
+    "strict": true,
+    "tsBuildInfoFile": ".tsbuildinfo",
+    "incremental": true,
+    "esModuleInterop": true,
+    
+    "forceConsistentCasingInFileNames": true
+  },
+  "exclude": ["**/*.test.ts"]
+}
