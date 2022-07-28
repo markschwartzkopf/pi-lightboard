@@ -1,17 +1,13 @@
 type objectType = 'fixture' | 'group';
-interface settings {
-  //[K: string]: settingType[keyof settingType]; //But...
-  //Forcing all properties to a type by name
-  //To prevent intersection of two same-named properties with different types
-  r?: settingType['std'];
-  g?: settingType['std'];
-  b?: settingType['std'];
-  hue?: settingType['hue'];
-  saturation?: settingType['std'];
-  value?: settingType['std'];
+interface Settings {
+	//[K: string]: settingType[keyof settingType]; //But...
+	//Forcing all properties to a type by name
+	//To prevent intersection of two same-named properties with different types
+	color?: SettingType['color'];
+	value?: SettingType['std'];
 }
 
-interface settingType {
-  std: { type: 'std'; range: [number, number]; val: number; minOffset: number; maxOffset: number };
-  hue: { type: 'hue'; val: number; curMin: number; curMax: number };
+interface SettingType {
+	std: { type: 'std'; val: number; minVal: number; maxVal: number }; //range from 0 - 1
+	color: { type: 'color'; h: number; minH: number; maxH: number; s: number; minS: number; maxS: number }; //hue range from 0 - 2Pi, saturation range from 0 - 1
 }
